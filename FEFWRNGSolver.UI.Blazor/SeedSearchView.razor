@@ -1,0 +1,132 @@
+@using FEFWRNGSolver.Presentation
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@inject IJSRuntime JavaScript
+@implements IDisposable
+
+<h1>成長seed特定</h1>
+<form @onsubmit="Search" @onsubmit:preventDefault>
+    <fieldset class="search-inputs" disabled="@m_ViewModel.IsRunning">
+        <GrowthSettings Model="m_ViewModel.Settings" SettingsChanged="OnSettingsChanged" />
+        <h2>観測したレベルアップ</h2>
+        <p>同じ成長条件での抽選成長（最低保証2種類）を1回目から順に入力してください。
+            各能力が上限に達せず、途中でほかの行動が成長seedを消費していない連続した区間が対象です。</p>
+        <p>チェックで各能力の上昇量を切り替えられます。</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="各回の能力上昇量">
+            <table class="observations">
+                <thead>
+                    <tr>
+                        <th scope="col">回数</th>
+                        @foreach (var stat in m_ViewModel.Settings.GrowthRates)
+                        {
+                            <th scope="col">@stat.Name</th>
+                        }
+                        <th scope="col">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < m_ViewModel.Observations.Count; i++)
+                    {
+                        var rowIndex = i;
+                        var row = m_ViewModel.Observations[i];
+                        <tr @key="row">
+                            <th scope="row">@(i + 1)</th>
+                            @for (int j = 0; j < row.Length; j++)
+                            {
+                                var column = j;
+                                var (low, high) = m_GainOptions[j];
+                                <td>
+                                    <label>
+                                        <input type="checkbox" @bind="row[column]" @bind:after="m_ViewModel.InputsChanged"
+                                               disabled="@(low == high)"
+                                               aria-label="@($"{i + 1}回目の{m_ViewModel.Settings.GrowthRates[j].Name}の追加上昇")" />
+                                        +@(row[column] ? high : low)
+                                    </label>
+                                </td>
+                            }
+                            <td><button type="button" class="secondary"
+                                        aria-label="@($"{i + 1}回目を削除")" @onclick="() => m_ViewModel.RemoveObservation(rowIndex)">削除</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <button class="secondary add-observation" type="button" @onclick="m_ViewModel.AddObservation">レベルアップを追加</button>
+    </fieldset>
+    @if (m_ViewModel.ErrorMessage is not null)
+    {
+        <p role="alert">@m_ViewModel.ErrorMessage</p>
+    }
+    @if (m_ViewModel.IsRunning)
+    {
+        <button type="button" @onclick="m_ViewModel.Cancel">探索を中止</button>
+    }
+    else
+    {
+        <button type="submit">計算</button>
+    }
+</form>
+
+@if (m_ViewModel.IsRunning || m_ViewModel.HasCompleted || m_ViewModel.WasCancelled)
+{
+    <h2>探索結果</h2>
+    <p role="status">@SearchStatus</p>
+    <label class="search-progress">探索済み @m_ViewModel.Scanned.ToString("N0") / @SeedSearchViewModel.CandidateCount.ToString("N0")
+        <progress value="@m_ViewModel.Scanned" max="@SeedSearchViewModel.CandidateCount"></progress>
+    </label>
+    <p>
+        一致した候補は @m_ViewModel.MatchCount.ToString("N0") 件です。
+        @if (m_ViewModel.MatchCount > m_ViewModel.Matches.Count)
+        {
+            <text>先頭 @m_ViewModel.Matches.Count 件を表示します。</text>
+        }
+    </p>
+    @if (m_ViewModel.Matches.Count > 0)
+    {
+        <div class="table-scroll" tabindex="0" role="region" aria-label="一致した成長seedの候補">
+            <table>
+                <thead><tr><th scope="col">観測開始時の成長seed</th><th scope="col">観測終了後の成長seed</th></tr></thead>
+                <tbody>
+                    @foreach (var match in m_ViewModel.Matches)
+                    {
+                        <tr><td class="seed">@match.InitialSeed.ToString("X8")</td><td class="seed">@match.NextSeed.ToString("X8")</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    private readonly SeedSearchViewModel m_ViewModel = new();
+    private (int Low, int High)[] m_GainOptions = [];
+
+    protected override void OnInitialized()
+    {
+        m_ViewModel.Changed += Refresh;
+        UpdateGainOptions();
+    }
+
+    private void OnSettingsChanged()
+    {
+        UpdateGainOptions();
+        m_ViewModel.InputsChanged();
+    }
+
+    private void UpdateGainOptions() => m_GainOptions = m_ViewModel.GetGainOptions();
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    private string SearchStatus => m_ViewModel.IsRunning
+        ? m_ViewModel.WorkerCount > 0 ? $"探索中（並列数 {m_ViewModel.WorkerCount}）" : "探索準備中"
+        : m_ViewModel.HasCompleted ? "探索完了" : "探索中断";
+
+    private Task Search() => m_ViewModel.SearchWithWorkersAsync((rates, observations, token) =>
+        BrowserSeedSearchPool.CreateAsync(JavaScript, rates, observations, token));
+
+    public void Dispose()
+    {
+        m_ViewModel.Changed -= Refresh;
+        m_ViewModel.Cancel();
+    }
+}

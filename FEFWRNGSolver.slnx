@@ -1,0 +1,12 @@
+<Solution>
+  <Project Path="FEFWRNGSolver/FEFWRNGSolver.csproj" />
+  <Project Path="FEFWRNGSolver.Domain/FEFWRNGSolver.Domain.csproj" />
+  <Project Path="FEFWRNGSolver.Domain.Tests/FEFWRNGSolver.Domain.Tests.csproj" />
+  <Project Path="FEFWRNGSolver.App/FEFWRNGSolver.App.csproj" />
+  <Project Path="FEFWRNGSolver.App.Tests/FEFWRNGSolver.App.Tests.csproj" />
+  <Project Path="FEFWRNGSolver.Presentation/FEFWRNGSolver.Presentation.csproj" />
+  <Project Path="FEFWRNGSolver.Presentation.Tests/FEFWRNGSolver.Presentation.Tests.csproj" />
+  <Project Path="FEFWRNGSolver.UI/FEFWRNGSolver.UI.csproj" />
+  <Project Path="FEFWRNGSolver.UI.Blazor/FEFWRNGSolver.UI.Blazor.csproj" />
+  <Project Path="FEFWRNGSolver.Web/FEFWRNGSolver.Web.csproj" />
+</Solution>

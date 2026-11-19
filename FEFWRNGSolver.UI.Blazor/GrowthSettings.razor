@@ -1,0 +1,82 @@
+@using FEFWRNGSolver.Presentation
+@using Microsoft.AspNetCore.Components.Web
+
+@{
+    var setup = Model.Setup;
+    var selectedRates = setup.IsManual ? default : Model.SelectedGrowthRates;
+}
+<div class="settings">
+    @ChildContent
+    <label>スキル補正
+        <select @bind="Model.SelectedSkillBonus" @bind:after="NotifyChanged">
+            @foreach (var option in MainViewModel.SkillBonusOptions)
+            {
+                <option value="@option.Value">@option.Name</option>
+            }
+        </select>
+    </label>
+</div>
+<div class="settings">
+    <label>ユニット
+        <select @bind="setup.UnitId" @bind:after="NotifyChanged">
+            @foreach (var unit in setup.Units)
+            {
+                <option value="@unit.Id">@unit.Name</option>
+            }
+        </select>
+    </label>
+    @if (!setup.IsManual)
+    {
+        <label>兵種
+            <select @key="setup.UnitId" @bind="setup.ClassId" @bind:after="NotifyChanged">
+                @foreach (var job in setup.Classes)
+                {
+                    <option value="@job.Id">@job.Name</option>
+                }
+            </select>
+        </label>
+        <label>動物
+            <select @key="(setup.UnitId, setup.ClassId)" @bind="setup.AnimalId" @bind:after="NotifyChanged" disabled="@(setup.Animals.Count <= 1)">
+                @foreach (var animal in setup.Animals)
+                {
+                    <option value="@animal.Id">@animal.Name</option>
+                }
+            </select>
+        </label>
+        <label>友好度
+            <select @bind="setup.Affection" @bind:after="NotifyChanged" disabled="@(!setup.HasAnimal)">
+                @foreach (var level in GrowthSetupViewModel.AffectionLevels)
+                {
+                    <option value="@level">@level</option>
+                }
+            </select>
+        </label>
+    }
+</div>
+<fieldset>
+    <legend>@(setup.IsManual ? "スキル補正前の成長率（％）" : "実効成長率（％）")</legend>
+    <div class="rates">
+        @for (int i = 0; i < Model.GrowthRates.Count; i++)
+        {
+            var stat = Model.GrowthRates[i];
+            <label>@stat.Name
+                @if (setup.IsManual)
+                {
+                    <input @bind="stat.Rate" @bind:event="oninput" @bind:after="NotifyChanged" inputmode="numeric" />
+                }
+                else
+                {
+                    <input value="@selectedRates[i]" readonly />
+                }
+            </label>
+        }
+    </div>
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired] public MainViewModel Model { get; set; } = null!;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback SettingsChanged { get; set; }
+
+    private Task NotifyChanged() => SettingsChanged.InvokeAsync();
+}

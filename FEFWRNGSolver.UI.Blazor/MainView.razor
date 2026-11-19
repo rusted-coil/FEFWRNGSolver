@@ -1,0 +1,110 @@
+@using FEFWRNGSolver.Presentation
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+
+<PageTitle>@m_ViewModel.Title</PageTitle>
+<div class="tool-tabs" role="tablist" aria-label="ツール" @onkeydown="OnTabKeyDown">
+    <button type="button" role="tab" id="prediction-tab" aria-controls="prediction-panel"
+            aria-selected="@(m_ShowPrediction ? "true" : "false")" tabindex="@(m_ShowPrediction ? 0 : -1)"
+            @ref="m_PredictionTab" @onclick="() => m_ShowPrediction = true">レベルアップ予測</button>
+    <button type="button" role="tab" id="seed-tab" aria-controls="seed-panel"
+            aria-selected="@(m_ShowPrediction ? "false" : "true")" tabindex="@(m_ShowPrediction ? -1 : 0)"
+            @ref="m_SeedTab" @onclick="() => m_ShowPrediction = false">成長seed特定</button>
+</div>
+<section id="prediction-panel" role="tabpanel" aria-labelledby="prediction-tab" hidden="@(!m_ShowPrediction)">
+    <h1>レベルアップ計算</h1>
+    <form @onsubmit="Calculate" @onsubmit:preventDefault>
+        <GrowthSettings Model="m_ViewModel">
+            <label>成長seed（16進数8桁）
+                <input class="seed" @bind="m_ViewModel.GrowthSeed" @bind:event="oninput"
+                       placeholder="1234ABCD" spellcheck="false" autocapitalize="characters" />
+            </label>
+            <label>レベルアップ回数
+                <input @bind="m_ViewModel.LevelUpCount" @bind:event="oninput" inputmode="numeric" />
+            </label>
+        </GrowthSettings>
+        <p>初期能力値はすべて0、上限は99、最低保証は2種類です。</p>
+        @if (m_ViewModel.ErrorMessage is not null)
+        {
+            <p role="alert">@m_ViewModel.ErrorMessage</p>
+        }
+        <button type="submit">計算</button>
+    </form>
+
+    <h2>計算結果</h2>
+    <div class="table-scroll" @key="m_ViewModel.Results" tabindex="0" role="region" aria-label="レベルアップごとの計算結果">
+        <table>
+            <thead>
+                <tr>
+                    <th scope="col">回数</th>
+                    <th scope="col">成長seed</th>
+                    @foreach (var stat in m_ViewModel.GrowthRates)
+                    {
+                        <th scope="col">@stat.Name</th>
+                    }
+                    <th scope="col">次の成長seed</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (m_ViewModel.Results.Count == 0)
+                {
+                    <tr><td class="empty" colspan="12">計算結果はまだありません。</td></tr>
+                }
+                else
+                {
+                    <Virtualize TItem="LevelUpRow" ItemsProvider="GetRows" Context="row" ItemSize="40" SpacerElement="tr">
+                        <tr>
+                            <td>@row.Number</td>
+                            <td class="seed">@row.GrowthSeed</td>
+                            @foreach (var gain in row.StatGains)
+                            {
+                                <td class="@(gain > 0 ? "gain" : null)">@gain.ToString("+0;−0;0")</td>
+                            }
+                            <td class="seed">@row.NextGrowthSeed</td>
+                        </tr>
+                    </Virtualize>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+<section id="seed-panel" role="tabpanel" aria-labelledby="seed-tab" hidden="@m_ShowPrediction">
+    <SeedSearchView />
+</section>
+
+@code {
+    private readonly MainViewModel m_ViewModel = new();
+    private bool m_ShowPrediction = true;
+    private ElementReference m_PredictionTab;
+    private ElementReference m_SeedTab;
+
+    private async Task OnTabKeyDown(KeyboardEventArgs args)
+    {
+        switch (args.Key)
+        {
+            case "ArrowLeft":
+            case "ArrowRight":
+                m_ShowPrediction = !m_ShowPrediction;
+                break;
+            case "Home":
+                m_ShowPrediction = true;
+                break;
+            case "End":
+                m_ShowPrediction = false;
+                break;
+            default:
+                return;
+        }
+
+        await (m_ShowPrediction ? m_PredictionTab : m_SeedTab).FocusAsync();
+    }
+
+    private void Calculate() => m_ViewModel.Calculate();
+
+    private ValueTask<ItemsProviderResult<LevelUpRow>> GetRows(ItemsProviderRequest request)
+    {
+        var results = m_ViewModel.Results;
+        return ValueTask.FromResult(new ItemsProviderResult<LevelUpRow>(
+            results.Skip(request.StartIndex).Take(request.Count), results.Count));
+    }
+}

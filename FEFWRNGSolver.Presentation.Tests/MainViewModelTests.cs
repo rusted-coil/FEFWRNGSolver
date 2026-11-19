@@ -27,15 +27,24 @@ public sealed class MainViewModelTests
         model.SelectedSkillBonus = MainViewModel.SkillBonusOptions[1].Value;
 
         short[] expected = [80, 70, 25, 50, 80, 80, 30, 35, 55];
-        CollectionAssert.AreEqual(expected, model.SelectedGrowthRates.ToArray());
+        CollectionAssert.AreEqual(expected.Select(rate => rate.ToString()).ToArray(),
+            model.GrowthRates.Select(stat => stat.Rate).ToArray());
         var manual = CreateModel(expected.Select(rate => rate.ToString()).ToArray());
         Assert.IsTrue(model.Calculate(), model.ErrorMessage);
         Assert.IsTrue(manual.Calculate(), manual.ErrorMessage);
         CollectionAssert.AreEqual(manual.Results[0].StatGains.ToArray(), model.Results[0].StatGains.ToArray());
 
+        model.GrowthRates[0].Rate = "200";
+        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
+        Assert.AreEqual(2, model.Results[0].StatGains[0]);
+        setup.Affection = 4;
+        Assert.AreEqual(model.SelectedGrowthRates[0].ToString(), model.GrowthRates[0].Rate);
+
         setup.UnitId = "";
         Assert.IsTrue(setup.IsManual);
         Assert.IsFalse(setup.HasAnimal);
+        Assert.AreEqual("133", model.GrowthRates[0].Rate);
+        model.SelectedSkillBonus = MainViewModel.SkillBonusOptions[0].Value;
         Assert.AreEqual("123", model.GrowthRates[0].Rate);
     }
 
@@ -64,14 +73,23 @@ public sealed class MainViewModelTests
     [TestMethod]
     public void SelectedSkillMatchesManualRatesInDisplayOrder()
     {
-        var model = CreateModel("90", "85", "95", "95", "90", "80", "95", "-5", "90");
+        var model = CreateModel("90", "85", "95", "95", "90", "80", "95", "0", "90");
         CollectionAssert.AreEqual(new[] { "スキル補正無し", "戦車兵の道（Lv35）", "戦車兵の道（Lv45）", "戦象兵の道（Lv45）" },
             MainViewModel.SkillBonusOptions.Select(option => option.Name).ToArray());
         model.SelectedSkillBonus = MainViewModel.SkillBonusOptions[2].Value;
+        CollectionAssert.AreEqual(new[] { "100", "100", "100", "100", "100", "100", "100", "5", "100" },
+            model.GrowthRates.Select(stat => stat.Rate).ToArray());
+        model.GrowthRates[7].Rate = "0";
         Assert.IsTrue(model.Calculate(), model.ErrorMessage);
         CollectionAssert.AreEqual(new[] { 1, 1, 1, 1, 1, 1, 1, 0, 1 }, model.Results[0].StatGains.ToArray());
 
         model.GrowthRates[0].Rate = "32767";
+        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
+        model.SelectedSkillBonus = MainViewModel.SkillBonusOptions[0].Value;
+        Assert.AreEqual("0", model.GrowthRates[7].Rate);
+        model.SelectedSkillBonus = MainViewModel.SkillBonusOptions[2].Value;
+        Assert.AreEqual("0", model.GrowthRates[7].Rate);
+        model.GrowthRates[0].Rate = "32768";
         Assert.IsFalse(model.Calculate());
         Assert.IsNotNull(model.ErrorMessage);
         Assert.AreEqual(1, model.Results.Count);

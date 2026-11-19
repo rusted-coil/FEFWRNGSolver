@@ -21,7 +21,17 @@ public sealed class MainViewModel
             return [.. GrowthRates.Select(stat => rates[stat.InternalIndex])];
         }
     }
-    public GrowthSkillBonus SelectedSkillBonus { get; set; } = GrowthSkillBonus.None;
+    public GrowthSkillBonus SelectedSkillBonus
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            field = value;
+            RefreshGrowthRates();
+        }
+    }
     public static IReadOnlyList<SkillBonusOption> SkillBonusOptions { get; } =
     [
         new(GrowthSkillBonus.None, "スキル補正無し"),
@@ -38,6 +48,19 @@ public sealed class MainViewModel
         new("HP", 0), new("力", 1), new("魔力", 2), new("速さ", 4), new("技", 3),
         new("守備", 6), new("魔防", 7), new("幸運", 5), new("魅力", 8)
     ];
+
+    public MainViewModel() => Setup.Changed += RefreshGrowthRates;
+
+    private void RefreshGrowthRates()
+    {
+        var selectedRates = SelectedGrowthRates;
+        var skill = EffectiveGrowthRates.GetSkillModifiers(SelectedSkillBonus);
+        for (int i = 0; i < GrowthRates.Count; i++)
+        {
+            var input = GrowthRates[i];
+            input.ApplySetup(Setup.IsManual ? null : selectedRates[i], skill[input.InternalIndex]);
+        }
+    }
 
     public bool Calculate()
     {
@@ -68,33 +91,17 @@ public sealed class MainViewModel
     {
         effectiveRates = default;
         error = "";
-        try
+        Span<short> rates = stackalloc short[GrowthRates.Count];
+        foreach (var input in GrowthRates)
         {
-            if (!Setup.IsManual)
+            if (!short.TryParse(input.Rate, NumberStyles.None, CultureInfo.InvariantCulture, out rates[input.InternalIndex]))
             {
-                effectiveRates = Setup.GetEffectiveRates(SelectedSkillBonus);
-                return true;
+                error = $"{input.Name}の実効成長率は0～32767の整数で入力してください。";
+                return false;
             }
-
-            Span<short> rates = stackalloc short[GrowthRates.Count];
-            bool hasSkill = SelectedSkillBonus != GrowthSkillBonus.None;
-            var numberStyle = hasSkill ? NumberStyles.AllowLeadingSign : NumberStyles.None;
-            foreach (var input in GrowthRates)
-            {
-                if (!short.TryParse(input.Rate, numberStyle, CultureInfo.InvariantCulture, out rates[input.InternalIndex]))
-                {
-                    error = $"{input.Name}の成長率は{(hasSkill ? short.MinValue : 0)}～32767の整数で入力してください。";
-                    return false;
-                }
-            }
-            effectiveRates = EffectiveGrowthRates.Calculate(rates, SelectedSkillBonus);
-            return true;
         }
-        catch (OverflowException)
-        {
-            error = "スキル補正後の成長率は各能力32767以下にしてください。";
-            return false;
-        }
+        effectiveRates = [.. rates];
+        return true;
     }
 
     private bool Fail(string message)
@@ -108,11 +115,44 @@ public sealed record SkillBonusOption(GrowthSkillBonus Value, string Name);
 
 public sealed class GrowthRateInput
 {
+    private string? m_UnitRate;
+    private string m_ManualRate = "0";
+    private short m_SkillBonusAtInput;
+    private short m_SkillBonus;
+
     internal GrowthRateInput(string name, int internalIndex) => (Name, InternalIndex) = (name, internalIndex);
 
     public string Name { get; }
-    public string Rate { get; set; } = "0";
+    public string Rate
+    {
+        get
+        {
+            if (m_UnitRate is not null)
+                return m_UnitRate;
+            // 入力時の補正との差を使い、スキルを往復しても丸め前の値を復元する。
+            if (m_SkillBonus != m_SkillBonusAtInput &&
+                short.TryParse(m_ManualRate, NumberStyles.None, CultureInfo.InvariantCulture, out short rate))
+                return Math.Max(0, rate + m_SkillBonus - m_SkillBonusAtInput).ToString(CultureInfo.InvariantCulture);
+            return m_ManualRate;
+        }
+        set
+        {
+            if (m_UnitRate is not null)
+                m_UnitRate = value;
+            else
+            {
+                m_ManualRate = value;
+                m_SkillBonusAtInput = m_SkillBonus;
+            }
+        }
+    }
     internal int InternalIndex { get; }
+
+    internal void ApplySetup(short? unitRate, short skillBonus)
+    {
+        m_UnitRate = unitRate?.ToString(CultureInfo.InvariantCulture);
+        m_SkillBonus = skillBonus;
+    }
 }
 
 public sealed record LevelUpRow(int Number, string GrowthSeed, ImmutableArray<int> StatGains, string NextGrowthSeed);

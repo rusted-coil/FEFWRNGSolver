@@ -67,9 +67,12 @@ public sealed class SeedSearchViewModelTests
         Assert.IsNotNull(model.ErrorMessage);
         model.AddObservation();
         model.Settings.SelectedSkillBonus = MainViewModel.SkillBonusOptions[1].Value;
-        model.Settings.GrowthRates[0].Rate = "110";
-        Assert.AreEqual((1, 2), model.GetGainOptions()[0]);
-        model.Settings.GrowthRates[0].Rate = "32767";
+        model.Settings.GrowthRates[0].Rate = "100";
+        Assert.AreEqual((1, 1), model.GetGainOptions()[0]);
+        model.Settings.Setup.UnitId = "PID_ムウ";
+        model.Settings.GrowthRates[0].Rate = "200";
+        Assert.AreEqual((2, 2), model.GetGainOptions()[0]);
+        model.Settings.GrowthRates[0].Rate = "32768";
         await model.SearchAsync();
         Assert.IsNotNull(model.ErrorMessage);
         Assert.AreEqual(0L, model.Scanned);

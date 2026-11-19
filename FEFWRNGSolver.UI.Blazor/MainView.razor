@@ -1,8 +1,15 @@
 @using FEFWRNGSolver.Presentation
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.Web.Virtualization
+@implements IDisposable
 
 <PageTitle>@m_ViewModel.Title</PageTitle>
+<fieldset class="unit-panel" disabled="@m_Search.IsRunning">
+    <legend>ユニット</legend>
+    <div class="unit-fields">
+        <GrowthSettings Model="m_ViewModel" SettingsChanged="m_Search.InputsChanged" />
+    </div>
+</fieldset>
 <div class="tool-tabs" role="tablist" aria-label="ツール" @onkeydown="OnTabKeyDown">
     <button type="button" role="tab" id="prediction-tab" aria-controls="prediction-panel"
             aria-selected="@(m_ShowPrediction ? "true" : "false")" tabindex="@(m_ShowPrediction ? 0 : -1)"
@@ -14,7 +21,7 @@
 <section id="prediction-panel" role="tabpanel" aria-labelledby="prediction-tab" hidden="@(!m_ShowPrediction)">
     <h1>レベルアップ計算</h1>
     <form @onsubmit="Calculate" @onsubmit:preventDefault>
-        <GrowthSettings Model="m_ViewModel">
+        <div class="settings">
             <label>成長seed（16進数8桁）
                 <input class="seed" @bind="m_ViewModel.GrowthSeed" @bind:event="oninput"
                        placeholder="1234ABCD" spellcheck="false" autocapitalize="characters" />
@@ -22,7 +29,7 @@
             <label>レベルアップ回数
                 <input @bind="m_ViewModel.LevelUpCount" @bind:event="oninput" inputmode="numeric" />
             </label>
-        </GrowthSettings>
+        </div>
         <p>初期能力値はすべて0、上限は99、最低保証は2種類です。</p>
         @if (m_ViewModel.ErrorMessage is not null)
         {
@@ -69,14 +76,25 @@
     </div>
 </section>
 <section id="seed-panel" role="tabpanel" aria-labelledby="seed-tab" hidden="@m_ShowPrediction">
-    <SeedSearchView />
+    <SeedSearchView Model="m_Search" />
 </section>
 
 @code {
-    private readonly MainViewModel m_ViewModel = new();
+    private readonly SeedSearchViewModel m_Search = new();
+    private MainViewModel m_ViewModel => m_Search.Settings;
     private bool m_ShowPrediction = true;
     private ElementReference m_PredictionTab;
     private ElementReference m_SeedTab;
+
+    protected override void OnInitialized() => m_Search.Changed += Refresh;
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        m_Search.Changed -= Refresh;
+        m_Search.Cancel();
+    }
 
     private async Task OnTabKeyDown(KeyboardEventArgs args)
     {

@@ -4,7 +4,7 @@ namespace FEFWRNGSolver.UI;
 
 public sealed partial class MainForm : Form
 {
-    private readonly MainViewModel m_ViewModel = new();
+    private readonly MainViewModel m_ViewModel;
     private readonly Label m_Error = new() { AutoSize = true, ForeColor = SystemColors.WindowText };
     private readonly DataGridView m_Results = new()
     {
@@ -23,17 +23,21 @@ public sealed partial class MainForm : Form
     public MainForm()
     {
         InitializeComponent();
+        var searchModel = new SeedSearchViewModel();
+        m_ViewModel = searchModel.Settings;
         Text = m_ViewModel.Title;
         MinimumSize = new Size(660, 400);
         ClientSize = new Size(920, 600);
 
-        var tabs = new TabControl { Dock = DockStyle.Fill, Padding = new Point(20, 8) };
+        var settings = new GrowthSettingsPanel(m_ViewModel) { TabIndex = 0 };
+        var tabs = new TabControl { Dock = DockStyle.Fill, Padding = new Point(20, 8), TabIndex = 1 };
         var prediction = new TabPage("レベルアップ予測");
         tabs.TabPages.Add(prediction);
         var search = new TabPage("成長seed特定");
-        search.Controls.Add(new SeedSearchPanel { Dock = DockStyle.Fill });
+        search.Controls.Add(new SeedSearchPanel(searchModel, settings) { Dock = DockStyle.Fill });
         tabs.TabPages.Add(search);
         Controls.Add(tabs);
+        Controls.Add(settings);
 
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(12) };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -43,7 +47,12 @@ public sealed partial class MainForm : Form
         prediction.Controls.Add(layout);
         layout.Controls.Add(new Label { AutoSize = true, Text = "抽選成長　各能力の初期値は0、上限は99、最低保証は2種類です。" }, 0, 0);
 
-        layout.Controls.Add(new GrowthSettingsPanel(m_ViewModel, includePredictionInputs: true), 0, 1);
+        var inputs = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 2 };
+        inputs.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));
+        inputs.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
+        AddInput(inputs, 0, "成長seed（16進数8桁）", m_ViewModel.GrowthSeed, value => m_ViewModel.GrowthSeed = value);
+        AddInput(inputs, 1, "レベルアップ回数", m_ViewModel.LevelUpCount, value => m_ViewModel.LevelUpCount = value);
+        layout.Controls.Add(inputs, 0, 1);
 
         var actions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top };
         var calculate = new Button { Text = "計算", AutoSize = true };
@@ -62,6 +71,14 @@ public sealed partial class MainForm : Form
         AddResultColumn("次の成長seed", 110);
         m_Results.CellValueNeeded += OnResultCellValueNeeded;
         layout.Controls.Add(m_Results, 0, 3);
+    }
+
+    private static void AddInput(TableLayoutPanel panel, int column, string name, string initialValue, Action<string> update)
+    {
+        var input = new TextBox { AccessibleName = name, Text = initialValue, Dock = DockStyle.Fill };
+        input.TextChanged += (_, _) => update(input.Text);
+        panel.Controls.Add(new Label { Text = name, AutoSize = true }, column, 0);
+        panel.Controls.Add(input, column, 1);
     }
 
     private DataGridViewTextBoxColumn AddResultColumn(string header, int width)

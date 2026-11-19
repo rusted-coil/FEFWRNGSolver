@@ -27,7 +27,6 @@ h2 { margin: 2rem 0 .75rem; font-size: 1.25rem; }
 form, .table-scroll { background: white; border: 1px solid #cbd6d1; border-radius: .5rem; }
 form { padding: clamp(1rem, 3vw, 1.5rem); }
 .settings { display: flex; flex-wrap: wrap; gap: 1rem; }
-.settings + .settings { margin-top: 1rem; }
 label, legend { font-weight: 600; }
 label { display: grid; gap: .3rem; }
 input, select, button { font: inherit; border-radius: .3rem; }
@@ -36,8 +35,15 @@ input, select { width: 100%; padding: .45rem .6rem; border: 1px solid #8b9d97; c
 :focus-visible { outline: 3px solid #248675; outline-offset: 2px; }
 fieldset { margin: 1.25rem 0 0; padding: 0; min-width: 0; border: 0; }
 legend { padding: 0; margin-bottom: .6rem; }
-.rates { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: .7rem; }
-.rates label { font-size: .875rem; }
+.unit-panel { margin: 0 0 1rem; padding: .5rem 1rem 1rem; background: white; border: 1px solid #cbd6d1; border-radius: .5rem; }
+.unit-panel > legend { padding: 0 .4rem; margin: 0; font-size: 1.25rem; }
+.unit-fields { overflow-x: auto; padding: .35rem; }
+.unit-fields > * { min-width: 48rem; }
+.unit-selectors { display: grid; grid-template-columns: 1fr 1.15fr 1.2fr .55fr 1.35fr; gap: .75rem; }
+.unit-selectors label, .unit-selectors select { min-width: 0; }
+.rates { display: flex; gap: .5rem; }
+.rates label { display: flex; flex: 1; min-width: 0; align-items: center; white-space: nowrap; font-size: .875rem; }
+.rates input { flex: 1; min-width: 0; padding-inline: .25rem; }
 form p { color: #455953; font-size: .9rem; }
 form [role="alert"] { color: #a52d22; }
 button { padding: .55rem 2rem; border: 0; background: #1a6858; color: white; font-weight: 600; cursor: pointer; }
@@ -58,6 +64,3 @@ th, td { height: 40px; padding: 0 .55rem; border-bottom: 1px solid #e0e7e3; }
 .seed { font-family: Consolas, monospace; letter-spacing: .04em; }
 .gain { color: #126047; font-weight: 700; }
 .empty { color: #586c64; height: 4rem; }
-@media (max-width: 48rem) {
-    .rates { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}

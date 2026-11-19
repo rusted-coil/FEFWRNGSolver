@@ -21,6 +21,20 @@ public static class EffectiveGrowthRates
         if (animalMultiplier is not (1 or 2))
             throw new ArgumentOutOfRangeException(nameof(animalMultiplier), "動物係数は1または2を指定してください。");
 
+        var skillRates = GetSkillModifiers(skillBonus);
+        var classRates = classModifiers.InStatOrder();
+        var animalRates = animalModifiers.InStatOrder();
+        var rates = ImmutableArray.CreateBuilder<short>(baseRates.Length);
+        for (int i = 0; i < baseRates.Length; i++)
+        {
+            int total = baseRates[i] + classRates[i] + animalRates[i] * animalMultiplier + skillRates[i];
+            rates.Add(checked((short)Math.Max(0, total)));
+        }
+        return rates.MoveToImmutable();
+    }
+
+    public static ImmutableArray<short> GetSkillModifiers(GrowthSkillBonus skillBonus)
+    {
         // 戦車兵は各段階と基本の兵種表の差分。https://annasnotebook.net/ja/mechanics/charioteer/
         // 戦象兵は騎乗動物を外した実測値。https://forums.serenesforest.net/topic/108370-mounts-give-bonus-stats-and-growth-rates/page/2/
         StatGrowthRates skill = skillBonus switch
@@ -33,15 +47,6 @@ public static class EffectiveGrowthRates
             GrowthSkillBonus.ElephantRidersPath45 => new(Hp: 10, Strength: 10, Dexterity: 10, Defense: 10, Resistance: 10),
             _ => throw new ArgumentOutOfRangeException(nameof(skillBonus))
         };
-        var skillRates = skill.InStatOrder();
-        var classRates = classModifiers.InStatOrder();
-        var animalRates = animalModifiers.InStatOrder();
-        var rates = ImmutableArray.CreateBuilder<short>(baseRates.Length);
-        for (int i = 0; i < baseRates.Length; i++)
-        {
-            int total = baseRates[i] + classRates[i] + animalRates[i] * animalMultiplier + skillRates[i];
-            rates.Add(checked((short)Math.Max(0, total)));
-        }
-        return rates.MoveToImmutable();
+        return skill.InStatOrder();
     }
 }

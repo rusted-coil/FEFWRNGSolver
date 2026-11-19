@@ -2,12 +2,11 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 @inject IJSRuntime JavaScript
-@implements IDisposable
+@{ var gainOptions = Model.GetGainOptions(); }
 
 <h1>成長seed特定</h1>
 <form @onsubmit="Search" @onsubmit:preventDefault>
-    <fieldset class="search-inputs" disabled="@m_ViewModel.IsRunning">
-        <GrowthSettings Model="m_ViewModel.Settings" SettingsChanged="OnSettingsChanged" />
+    <fieldset class="search-inputs" disabled="@Model.IsRunning">
         <h2>観測したレベルアップ</h2>
         <p>同じ成長条件での抽選成長（最低保証2種類）を1回目から順に入力してください。
             各能力が上限に達せず、途中でほかの行動が成長seedを消費していない連続した区間が対象です。</p>
@@ -17,7 +16,7 @@
                 <thead>
                     <tr>
                         <th scope="col">回数</th>
-                        @foreach (var stat in m_ViewModel.Settings.GrowthRates)
+                        @foreach (var stat in Model.Settings.GrowthRates)
                         {
                             <th scope="col">@stat.Name</th>
                         }
@@ -25,41 +24,41 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @for (int i = 0; i < m_ViewModel.Observations.Count; i++)
+                    @for (int i = 0; i < Model.Observations.Count; i++)
                     {
                         var rowIndex = i;
-                        var row = m_ViewModel.Observations[i];
+                        var row = Model.Observations[i];
                         <tr @key="row">
                             <th scope="row">@(i + 1)</th>
                             @for (int j = 0; j < row.Length; j++)
                             {
                                 var column = j;
-                                var (low, high) = m_GainOptions[j];
+                                var (low, high) = gainOptions[j];
                                 <td>
                                     <label>
-                                        <input type="checkbox" @bind="row[column]" @bind:after="m_ViewModel.InputsChanged"
+                                        <input type="checkbox" @bind="row[column]" @bind:after="Model.InputsChanged"
                                                disabled="@(low == high)"
-                                               aria-label="@($"{i + 1}回目の{m_ViewModel.Settings.GrowthRates[j].Name}の追加上昇")" />
+                                               aria-label="@($"{i + 1}回目の{Model.Settings.GrowthRates[j].Name}の追加上昇")" />
                                         +@(row[column] ? high : low)
                                     </label>
                                 </td>
                             }
                             <td><button type="button" class="secondary"
-                                        aria-label="@($"{i + 1}回目を削除")" @onclick="() => m_ViewModel.RemoveObservation(rowIndex)">削除</button></td>
+                                        aria-label="@($"{i + 1}回目を削除")" @onclick="() => Model.RemoveObservation(rowIndex)">削除</button></td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-        <button class="secondary add-observation" type="button" @onclick="m_ViewModel.AddObservation">レベルアップを追加</button>
+        <button class="secondary add-observation" type="button" @onclick="Model.AddObservation">レベルアップを追加</button>
     </fieldset>
-    @if (m_ViewModel.ErrorMessage is not null)
+    @if (Model.ErrorMessage is not null)
     {
-        <p role="alert">@m_ViewModel.ErrorMessage</p>
+        <p role="alert">@Model.ErrorMessage</p>
     }
-    @if (m_ViewModel.IsRunning)
+    @if (Model.IsRunning)
     {
-        <button type="button" @onclick="m_ViewModel.Cancel">探索を中止</button>
+        <button type="button" @onclick="Model.Cancel">探索を中止</button>
     }
     else
     {
@@ -67,27 +66,27 @@
     }
 </form>
 
-@if (m_ViewModel.IsRunning || m_ViewModel.HasCompleted || m_ViewModel.WasCancelled)
+@if (Model.IsRunning || Model.HasCompleted || Model.WasCancelled)
 {
     <h2>探索結果</h2>
     <p role="status">@SearchStatus</p>
-    <label class="search-progress">探索済み @m_ViewModel.Scanned.ToString("N0") / @SeedSearchViewModel.CandidateCount.ToString("N0")
-        <progress value="@m_ViewModel.Scanned" max="@SeedSearchViewModel.CandidateCount"></progress>
+    <label class="search-progress">探索済み @Model.Scanned.ToString("N0") / @SeedSearchViewModel.CandidateCount.ToString("N0")
+        <progress value="@Model.Scanned" max="@SeedSearchViewModel.CandidateCount"></progress>
     </label>
     <p>
-        一致した候補は @m_ViewModel.MatchCount.ToString("N0") 件です。
-        @if (m_ViewModel.MatchCount > m_ViewModel.Matches.Count)
+        一致した候補は @Model.MatchCount.ToString("N0") 件です。
+        @if (Model.MatchCount > Model.Matches.Count)
         {
-            <text>先頭 @m_ViewModel.Matches.Count 件を表示します。</text>
+            <text>先頭 @Model.Matches.Count 件を表示します。</text>
         }
     </p>
-    @if (m_ViewModel.Matches.Count > 0)
+    @if (Model.Matches.Count > 0)
     {
         <div class="table-scroll" tabindex="0" role="region" aria-label="一致した成長seedの候補">
             <table>
                 <thead><tr><th scope="col">観測開始時の成長seed</th><th scope="col">観測終了後の成長seed</th></tr></thead>
                 <tbody>
-                    @foreach (var match in m_ViewModel.Matches)
+                    @foreach (var match in Model.Matches)
                     {
                         <tr><td class="seed">@match.InitialSeed.ToString("X8")</td><td class="seed">@match.NextSeed.ToString("X8")</td></tr>
                     }
@@ -98,35 +97,12 @@
 }
 
 @code {
-    private readonly SeedSearchViewModel m_ViewModel = new();
-    private (int Low, int High)[] m_GainOptions = [];
+    [Parameter, EditorRequired] public SeedSearchViewModel Model { get; set; } = null!;
 
-    protected override void OnInitialized()
-    {
-        m_ViewModel.Changed += Refresh;
-        UpdateGainOptions();
-    }
+    private string SearchStatus => Model.IsRunning
+        ? Model.WorkerCount > 0 ? $"探索中（並列数 {Model.WorkerCount}）" : "探索準備中"
+        : Model.HasCompleted ? "探索完了" : "探索中断";
 
-    private void OnSettingsChanged()
-    {
-        UpdateGainOptions();
-        m_ViewModel.InputsChanged();
-    }
-
-    private void UpdateGainOptions() => m_GainOptions = m_ViewModel.GetGainOptions();
-
-    private void Refresh() => _ = InvokeAsync(StateHasChanged);
-
-    private string SearchStatus => m_ViewModel.IsRunning
-        ? m_ViewModel.WorkerCount > 0 ? $"探索中（並列数 {m_ViewModel.WorkerCount}）" : "探索準備中"
-        : m_ViewModel.HasCompleted ? "探索完了" : "探索中断";
-
-    private Task Search() => m_ViewModel.SearchWithWorkersAsync((rates, observations, token) =>
+    private Task Search() => Model.SearchWithWorkersAsync((rates, observations, token) =>
         BrowserSeedSearchPool.CreateAsync(JavaScript, rates, observations, token));
-
-    public void Dispose()
-    {
-        m_ViewModel.Changed -= Refresh;
-        m_ViewModel.Cancel();
-    }
 }

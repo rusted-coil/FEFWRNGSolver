@@ -28,6 +28,7 @@ public sealed class GrowthSetupViewModel
     public static IReadOnlyList<int> AffectionLevels { get; } = [.. Enumerable.Range(0, AnimalGrowthData.MaxAffection + 1)];
     public bool IsManual => m_UnitId.Length == 0;
     public bool HasAnimal => m_AnimalId.Length > 0;
+    internal event Action? Changed;
 
     public string UnitId
     {
@@ -41,7 +42,8 @@ public sealed class GrowthSetupViewModel
             m_UnitId = value;
             Classes = classes;
             if (!Classes.Any(job => job.Id == ClassId))
-                ClassId = classes.FirstOrDefault()?.Id ?? "";
+                SetClass(classes.FirstOrDefault()?.Id ?? "");
+            Changed?.Invoke();
         }
     }
 
@@ -55,12 +57,18 @@ public sealed class GrowthSetupViewModel
             bool available = IsManual ? value.Length == 0 : Classes.Any(job => job.Id == value);
             if (!available)
                 throw new ArgumentException("このユニットが選択できる兵種を指定してください。", nameof(value));
-            m_ClassId = value;
-            Animals = value.Length == 0 ? [m_Unassigned] :
-                [m_Unassigned, .. m_Master.GetAnimalsFor(m_Master.Classes[value]).Select(a => new GrowthOption(a.Id, a.Name))];
-            if (!Animals.Any(animal => animal.Id == AnimalId))
-                AnimalId = "";
+            SetClass(value);
+            Changed?.Invoke();
         }
+    }
+
+    private void SetClass(string id)
+    {
+        m_ClassId = id;
+        Animals = id.Length == 0 ? [m_Unassigned] :
+            [m_Unassigned, .. m_Master.GetAnimalsFor(m_Master.Classes[id]).Select(a => new GrowthOption(a.Id, a.Name))];
+        if (!Animals.Any(animal => animal.Id == AnimalId))
+            m_AnimalId = "";
     }
 
     public string AnimalId
@@ -73,6 +81,7 @@ public sealed class GrowthSetupViewModel
             if (!Animals.Any(animal => animal.Id == value))
                 throw new ArgumentException("この兵種が配備できる動物を指定してください。", nameof(value));
             m_AnimalId = value;
+            Changed?.Invoke();
         }
     }
 
@@ -81,9 +90,12 @@ public sealed class GrowthSetupViewModel
         get => m_Affection;
         set
         {
+            if (m_Affection == value)
+                return;
             ArgumentOutOfRangeException.ThrowIfNegative(value);
             ArgumentOutOfRangeException.ThrowIfGreaterThan(value, AnimalGrowthData.MaxAffection);
             m_Affection = value;
+            Changed?.Invoke();
         }
     }
 

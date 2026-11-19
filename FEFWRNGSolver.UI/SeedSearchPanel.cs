@@ -4,7 +4,7 @@ namespace FEFWRNGSolver.UI;
 
 internal sealed class SeedSearchPanel : UserControl
 {
-    private readonly SeedSearchViewModel m_ViewModel = new();
+    private readonly SeedSearchViewModel m_ViewModel;
     private readonly GrowthSettingsPanel m_Settings;
     private readonly DataGridView m_Observations = CreateGrid("レベルアップごとの観測結果");
     private readonly DataGridView m_Results = CreateGrid("成長seedの候補");
@@ -19,17 +19,18 @@ internal sealed class SeedSearchPanel : UserControl
     };
     private (int Low, int High)[] m_Options = [];
 
-    public SeedSearchPanel()
+    public SeedSearchPanel(SeedSearchViewModel viewModel, GrowthSettingsPanel settings)
     {
+        m_ViewModel = viewModel;
+        m_Settings = settings;
         AutoScroll = true;
-        AutoScrollMinSize = new Size(0, 540);
+        AutoScrollMinSize = new Size(0, 360);
         var layout = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8,
+            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7,
             MinimumSize = AutoScrollMinSize, Padding = new Padding(12)
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 55));
@@ -43,12 +44,10 @@ internal sealed class SeedSearchPanel : UserControl
         {
             AutoSize = true, Text = "同じ成長条件で連続した抽選成長を入力してください。最低保証2種類、全能力が上限未達、途中の別のseed消費なしとして探索します。"
         }, 0, 0);
-        m_Settings = new GrowthSettingsPanel(m_ViewModel.Settings);
-        layout.Controls.Add(m_Settings, 0, 1);
         layout.Controls.Add(new Label
         {
             AutoSize = true, Text = "観測結果　各能力の上昇量を入力します。見出しの右の値ならチェックしてください。"
-        }, 0, 2);
+        }, 0, 1);
         m_Observations.VirtualMode = true;
         m_Observations.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         m_Observations.MultiSelect = false;
@@ -60,7 +59,7 @@ internal sealed class SeedSearchPanel : UserControl
             if (m_Observations.IsCurrentCellDirty)
                 m_Observations.CommitEdit(DataGridViewDataErrorContexts.Commit);
         };
-        layout.Controls.Add(m_Observations, 0, 3);
+        layout.Controls.Add(m_Observations, 0, 2);
         m_Add.Click += (_, _) =>
         {
             m_ViewModel.AddObservation();
@@ -77,13 +76,13 @@ internal sealed class SeedSearchPanel : UserControl
         };
         var actions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top };
         actions.Controls.AddRange([m_Add, m_Remove, m_Search, m_Cancel]);
-        layout.Controls.Add(actions, 0, 4);
-        layout.Controls.Add(m_Status, 0, 5);
-        layout.Controls.Add(m_Progress, 0, 6);
+        layout.Controls.Add(actions, 0, 3);
+        layout.Controls.Add(m_Status, 0, 4);
+        layout.Controls.Add(m_Progress, 0, 5);
         m_Results.ReadOnly = true;
         m_Results.Columns.Add(TextColumn("最初の観測直前の成長seed"));
         m_Results.Columns.Add(TextColumn("最後の観測後の次の成長seed"));
-        layout.Controls.Add(m_Results, 0, 7);
+        layout.Controls.Add(m_Results, 0, 6);
 
         m_Settings.Changed += () =>
         {

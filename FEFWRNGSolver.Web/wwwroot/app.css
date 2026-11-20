@@ -7,6 +7,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; }
 main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+footer { max-width: 70rem; margin: auto; padding: 0 clamp(1rem, 4vw, 3rem) 1rem; font-size: .875rem; }
+footer summary { width: fit-content; cursor: pointer; }
 .menu-bar { margin-bottom: .75rem; border-bottom: 1px solid #cbd6d1; }
 .menu-bar details { position: relative; width: fit-content; }
 .menu-bar summary { cursor: pointer; padding: .45rem .75rem; }

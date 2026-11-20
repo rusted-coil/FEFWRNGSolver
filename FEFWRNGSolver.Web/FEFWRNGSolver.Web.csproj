@@ -13,5 +13,8 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.13" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.13" PrivateAssets="all" />
     <ProjectReference Include="../FEFWRNGSolver.UI.Blazor/FEFWRNGSolver.UI.Blazor.csproj" />
+    <Content Include="../LICENSE" Link="wwwroot/licenses/FEFWRNGSolver-LICENSE.txt" />
+    <Content Include="../licenses/dotnet-runtime-*.txt;../licenses/aspnetcore-*.txt;../licenses/blazor-THIRD-PARTY-NOTICES.txt;../licenses/icu-LICENSE.txt"
+             Link="wwwroot/licenses/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

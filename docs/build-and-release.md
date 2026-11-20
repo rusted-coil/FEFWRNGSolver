@@ -25,6 +25,8 @@ dnx dotnet-serve --yes -- -d ./artifacts/release/web -a 127.0.0.1 -p 8571
 
 ## 配布物のライセンス
 
+ビルド時に、リポジトリの [LICENSE](../LICENSE) と [licenses/](../licenses/) の原文から、各版で配布する文書が自動でコピーされます。依存関係を更新したときは、配布するバージョンに合わせて原文も更新してください。Web版では画面下部の「ライセンス / Licenses」から全文を開けます。
+
 Windows版のZIPには、本ツールの [LICENSE](../LICENSE) を入れます。`licenses/` には、ビルドに使ったバージョンの .NET ランタイムと Windows Forms のMITライセンス全文（著作権表示を含む）、それぞれの第三者通知、Microsoft .NET Library License の全文を収録します。v1.0.0 のランタイムは 10.0.13 です。[.NET のバイナリ配布方針](https://github.com/dotnet/runtime/blob/main/docs/project/licensing-assets.md)・[ランタイムの第三者通知](https://github.com/dotnet/runtime/blob/v10.0.13/THIRD-PARTY-NOTICES.TXT)・[Windows Forms の第三者通知](https://github.com/dotnet/winforms/blob/v10.0.13/THIRD-PARTY-NOTICES.TXT)
 
 Windows単一exeに組み込まれるランタイムには Microsoft .NET Library License が適用されます。第3条(a)(ii)に従い、同梱ランタイムについて、再配布者と外部エンドユーザーに同契約と同等以上の保護を与える条件への同意を求めます。配布ページからも利用前にその条件を読めるようにします。[Windows版 .NET のライセンス案内](https://github.com/dotnet/core/blob/main/license-information-windows.md)・[Microsoft .NET Library License 全文](https://dotnet.microsoft.com/dotnet_library_license.htm)

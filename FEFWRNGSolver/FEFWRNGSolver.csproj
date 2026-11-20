@@ -12,6 +12,9 @@
     <ProjectReference Include="../FEFWRNGSolver.UI/FEFWRNGSolver.UI.csproj" />
     <Content Include="../FEFWRNGSolver.Web/wwwroot/languages/**/*.json" Link="languages/%(RecursiveDir)%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <Content Include="../LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <Content Include="../licenses/dotnet-runtime-*.txt;../licenses/winforms-*.txt;../licenses/Microsoft-DotNet-Library-License.html"
+             Link="licenses/%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
 </Project>

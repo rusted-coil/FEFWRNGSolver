@@ -146,6 +146,67 @@ public sealed class MainViewModelTests
     }
 
     [DataTestMethod]
+    [DataRow(2, 2, 2)]
+    [DataRow(0, 1, 0)]
+    [DataRow(3, 9, 0)]
+    public void ExcludesCappedStatsFromTheGuaranteeAndCountsEachGrownStatOnce(int min, int max, int expectedRows)
+    {
+        var model = CreateModel("200", "0", "0", "100", "1");
+        model.LevelUpCount = "2";
+        model.GrowthRates[3].Condition = StatGrowthCondition.Capped;
+        model.MinGrowthCount = min;
+        model.MaxGrowthCount = max;
+
+        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
+        Assert.IsTrue(model.HasCalculated);
+        Assert.AreEqual(expectedRows, model.Results.Count);
+        foreach (var row in model.Results)
+            CollectionAssert.AreEqual(new[] { 2, 0, 0, 0, 1, 0, 0, 0, 0 }, row.StatGains.ToArray());
+    }
+
+    [TestMethod]
+    public void FiltersTheSimulatedLevelsWithoutChangingTheirNumbersSeedsOrAccumulatedStats()
+    {
+        var model = CreateModel("10000", "200");
+        model.LevelUpCount = "2";
+        Assert.IsTrue(model.GrowthRates.All(stat => stat.Condition == StatGrowthCondition.Any));
+        Assert.AreEqual(0, model.MinGrowthCount);
+        Assert.AreEqual(9, model.MaxGrowthCount);
+        Assert.IsFalse(model.HasCalculated);
+
+        model.GrowthRates[0].Condition = StatGrowthCondition.MustNotGrow;
+        model.GrowthRates[1].Condition = StatGrowthCondition.MustGrow;
+        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
+        var row = model.Results.Single();
+        Assert.AreEqual(2, row.Number);
+        Assert.AreEqual("110D0CBC", row.GrowthSeed);
+        Assert.AreEqual("411249A3", row.NextGrowthSeed);
+        CollectionAssert.AreEqual(new[] { 0, 2, 0, 0, 0, 0, 0, 0, 0 }, row.StatGains.ToArray());
+
+        model.GrowthRates[2].Condition = StatGrowthCondition.MustGrow;
+        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
+        Assert.AreEqual(0, model.Results.Count);
+        Assert.IsTrue(model.HasCalculated);
+    }
+
+    [DataTestMethod]
+    [DataRow(-1, 9)]
+    [DataRow(0, 10)]
+    [DataRow(5, 4)]
+    public void KeepsPreviousResultsWhenGrowthCountRangeIsInvalid(int min, int max)
+    {
+        var model = CreateModel("100");
+        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
+        var previous = model.Results;
+        model.MinGrowthCount = min;
+        model.MaxGrowthCount = max;
+
+        Assert.IsFalse(model.Calculate());
+        Assert.IsFalse(string.IsNullOrWhiteSpace(model.ErrorMessage));
+        Assert.AreSame(previous, model.Results);
+    }
+
+    [DataTestMethod]
     [DataRow("1234567", "1", "50")]
     [DataRow("123456789", "1", "50")]
     [DataRow("075bcg15", "1", "50")]

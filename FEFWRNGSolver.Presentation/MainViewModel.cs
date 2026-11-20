@@ -14,7 +14,16 @@ public sealed class MainViewModel
 
     public string Title => m_Text["SYS_APP_TITLE"];
     public string GrowthSeed { get; set; } = "";
-    public string LevelUpCount { get; set; } = "1";
+    public string LevelUpCount { get; set; } = "20";
+    public int MinGrowthCount { get; set; }
+    public int MaxGrowthCount { get; set; } = 9;
+    public IReadOnlyList<GrowthConditionOption> GrowthConditionOptions =>
+    [
+        new(StatGrowthCondition.Capped, m_Text["SYS_FILTER_CAPPED"]),
+        new(StatGrowthCondition.MustGrow, m_Text["SYS_FILTER_MUST_GROW"]),
+        new(StatGrowthCondition.Any, m_Text["SYS_FILTER_ANY"]),
+        new(StatGrowthCondition.MustNotGrow, m_Text["SYS_FILTER_MUST_NOT_GROW"])
+    ];
     public GrowthSetupViewModel Setup { get; }
     public ImmutableArray<short> SelectedGrowthRates
     {
@@ -48,6 +57,7 @@ public sealed class MainViewModel
         new(GrowthSkillBonus.ElephantRidersPath45, text.Format("SYS_SKILL_LEVEL_FORMAT", text.Skill("SID_戦象兵の道"), 45))
     ];
     public string? ErrorMessage => m_Error?.Translate(m_Text);
+    public bool HasCalculated { get; private set; }
     public IReadOnlyList<LevelUpRow> Results { get; private set; } = [];
     public event Action? UnitSelected;
 
@@ -112,6 +122,7 @@ public sealed class MainViewModel
 
     private void ClearPrediction()
     {
+        HasCalculated = false;
         Results = [];
         m_Error = null;
     }
@@ -138,19 +149,44 @@ public sealed class MainViewModel
             || count is < 1 or > 10_000)
             return Fail(new("SYS_INVALID_LEVEL_COUNT"));
 
+        if (MinGrowthCount < 0 || MaxGrowthCount > GrowthRates.Count || MinGrowthCount > MaxGrowthCount)
+            return Fail(new("SYS_INVALID_GROWTH_COUNT"));
+
         if (!TryGetEffectiveRates(out var rates, out var error))
             return Fail(error);
 
-        var steps = LevelUpSimulation.Calculate(seed, rates, count);
+        var cappedStats = GrowthRates.Where(input => input.Condition == StatGrowthCondition.Capped)
+            .Select(input => input.InternalIndex).ToImmutableArray();
+        var steps = LevelUpSimulation.Calculate(seed, rates, count, cappedStats);
         var rows = new List<LevelUpRow>(count);
+        int number = 0;
         foreach (var step in steps)
         {
+            number++;
+            if (!MatchesGrowthConditions(step.StatGains))
+                continue;
             var gains = GrowthRates.Select(input => step.StatGains[input.InternalIndex]).ToImmutableArray();
-            rows.Add(new LevelUpRow(rows.Count + 1, step.GrowthSeed.ToString("X8"), gains, step.NextGrowthSeed.ToString("X8")));
+            rows.Add(new LevelUpRow(number, step.GrowthSeed.ToString("X8"), gains, step.NextGrowthSeed.ToString("X8")));
         }
         Results = rows.AsReadOnly();
+        HasCalculated = true;
         m_Error = null;
         return true;
+    }
+
+    private bool MatchesGrowthConditions(ImmutableArray<int> gains)
+    {
+        int growthCount = 0;
+        foreach (var input in GrowthRates)
+        {
+            bool grew = gains[input.InternalIndex] > 0;
+            if ((input.Condition == StatGrowthCondition.MustGrow && !grew) ||
+                (input.Condition == StatGrowthCondition.MustNotGrow && grew))
+                return false;
+            if (grew)
+                growthCount++;
+        }
+        return growthCount >= MinGrowthCount && growthCount <= MaxGrowthCount;
     }
 
     internal bool TryGetEffectiveRates(out ImmutableArray<short> effectiveRates, out ValidationError error)
@@ -179,6 +215,10 @@ public sealed class MainViewModel
 
 public sealed record SkillBonusOption(GrowthSkillBonus Value, string Name);
 
+public enum StatGrowthCondition { Capped, MustGrow, Any, MustNotGrow }
+
+public sealed record GrowthConditionOption(StatGrowthCondition Value, string Name);
+
 internal readonly record struct ValidationError(string Key, string? StatNameKey = null)
 {
     public string Translate(LocalizationCatalog text) =>
@@ -198,6 +238,7 @@ public sealed class GrowthRateInput
 
     internal string NameKey { get; }
     public string Name => m_Text[NameKey];
+    public StatGrowthCondition Condition { get; set; } = StatGrowthCondition.Any;
     public string Rate
     {
         get

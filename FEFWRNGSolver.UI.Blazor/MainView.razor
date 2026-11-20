@@ -27,7 +27,7 @@
 <section id="prediction-panel" role="tabpanel" aria-labelledby="prediction-tab" hidden="@(!m_ShowPrediction)">
     <h1>@Text["SYS_PREDICTION_HEADING"]</h1>
     <form @onsubmit="Calculate" @onsubmit:preventDefault>
-        <div class="settings">
+        <div class="prediction-settings">
             <label>@Text["SYS_GROWTH_SEED_INPUT"]
                 <input class="seed" @bind="m_ViewModel.GrowthSeed" @bind:event="oninput"
                        placeholder="@Text["SYS_GROWTH_SEED_EXAMPLE"]" spellcheck="false" autocapitalize="characters" />
@@ -36,6 +36,30 @@
                 <input @bind="m_ViewModel.LevelUpCount" @bind:event="oninput" inputmode="numeric" />
             </label>
         </div>
+        <fieldset>
+            <legend>@Text["SYS_PREDICTION_FILTER"]</legend>
+            <div class="growth-conditions">
+                @foreach (var stat in m_ViewModel.GrowthRates)
+                {
+                    <label>@stat.Name
+                        <select @bind="stat.Condition">
+                            @foreach (var option in m_ViewModel.GrowthConditionOptions)
+                            {
+                                <option value="@option.Value">@option.Name</option>
+                            }
+                        </select>
+                    </label>
+                }
+            </div>
+            <div class="growth-count" role="group" aria-labelledby="growth-count-label">
+                <span id="growth-count-label">@Text["SYS_FILTER_GROWTH_COUNT"]</span>
+                <input type="number" min="0" max="9" required aria-label="@Text["SYS_FILTER_MIN_GROWTH_COUNT"]"
+                       @bind="m_ViewModel.MinGrowthCount" @bind:event="oninput" />
+                <span aria-hidden="true">～</span>
+                <input type="number" min="0" max="9" required aria-label="@Text["SYS_FILTER_MAX_GROWTH_COUNT"]"
+                       @bind="m_ViewModel.MaxGrowthCount" @bind:event="oninput" />
+            </div>
+        </fieldset>
         <p>@Text["SYS_PREDICTION_RULES"]</p>
         @if (m_ViewModel.ErrorMessage is not null)
         {
@@ -61,7 +85,7 @@
             <tbody>
                 @if (m_ViewModel.Results.Count == 0)
                 {
-                    <tr><td class="empty" colspan="12">@Text["SYS_PREDICTION_EMPTY"]</td></tr>
+                    <tr><td class="empty" colspan="12">@Text[m_ViewModel.HasCalculated ? "SYS_PREDICTION_NO_MATCHES" : "SYS_PREDICTION_EMPTY"]</td></tr>
                 }
                 else
                 {

@@ -35,11 +35,11 @@ public sealed partial class MainForm : Form
             m_Results.AccessibleName = catalog["SYS_PREDICTION_RESULTS"];
         });
         MinimumSize = new Size(660, 400);
-        ClientSize = new Size(920, 600);
+        ClientSize = new Size(920, 720);
 
         var settings = new GrowthSettingsPanel(m_ViewModel, m_Text) { TabIndex = 0 };
         var tabs = new TabControl { Dock = DockStyle.Fill, Padding = new Point(20, 8), TabIndex = 1 };
-        var prediction = new TabPage();
+        var prediction = new TabPage { AutoScrollMinSize = new Size(0, 440) };
         var search = new TabPage();
         m_Text.Bind(() => prediction.Text = catalog["SYS_PREDICTION_TAB"]);
         m_Text.Bind(() => search.Text = catalog["SYS_SEARCH_TAB"]);
@@ -54,7 +54,7 @@ public sealed partial class MainForm : Form
         MainMenuStrip = CreateMenu(catalog, saveLanguage);
         Controls.Add(MainMenuStrip);
 
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(12) };
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(12) };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         for (int i = 0; i < layout.RowCount - 1; i++)
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -62,12 +62,11 @@ public sealed partial class MainForm : Form
         prediction.Controls.Add(layout);
         layout.Controls.Add(m_Text.Label("SYS_PREDICTION_RULES"), 0, 0);
 
-        var inputs = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 2 };
-        inputs.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        inputs.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        var seedInput = AddInput(inputs, 0, "SYS_GROWTH_SEED_INPUT", m_ViewModel.GrowthSeed, value => m_ViewModel.GrowthSeed = value);
-        AddInput(inputs, 1, "SYS_LEVEL_UP_COUNT", m_ViewModel.LevelUpCount, value => m_ViewModel.LevelUpCount = value);
+        var inputs = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = false };
+        var seedInput = AddInput(inputs, "SYS_GROWTH_SEED_INPUT", m_ViewModel.GrowthSeed, value => m_ViewModel.GrowthSeed = value);
+        AddInput(inputs, "SYS_LEVEL_UP_COUNT", m_ViewModel.LevelUpCount, value => m_ViewModel.LevelUpCount = value);
         layout.Controls.Add(inputs, 0, 1);
+        layout.Controls.Add(CreatePredictionFilters(), 0, 2);
 
         var actions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top };
         var calculate = new Button { AutoSize = true };
@@ -81,7 +80,7 @@ public sealed partial class MainForm : Form
         m_Error.Anchor = AnchorStyles.Left;
         actions.Controls.Add(m_Error);
         tabs.SelectedIndexChanged += (_, _) => AcceptButton = tabs.SelectedTab == prediction ? calculate : null;
-        layout.Controls.Add(actions, 0, 2);
+        layout.Controls.Add(actions, 0, 3);
 
         AddResultColumn(() => catalog["SYS_LEVEL_NUMBER"], 52);
         var growthSeedColumn = AddResultColumn(() => catalog["SYS_GROWTH_SEED"], 110);
@@ -96,8 +95,8 @@ public sealed partial class MainForm : Form
                 e.ContextMenuStrip = seedMenu;
         };
         m_Results.CellValueNeeded += OnResultCellValueNeeded;
-        layout.Controls.Add(m_Results, 0, 3);
-        m_Text.Bind(() => m_Error.Text = m_ViewModel.ErrorMessage);
+        layout.Controls.Add(m_Results, 0, 4);
+        m_Text.Bind(UpdatePredictionMessage);
 
         void ShowUnitTab()
         {
@@ -156,13 +155,70 @@ public sealed partial class MainForm : Form
         });
     }
 
-    private TextBox AddInput(TableLayoutPanel panel, int column, string key, string initialValue, Action<string> update)
+    private TextBox AddInput(FlowLayoutPanel panel, string key, string initialValue, Action<string> update)
     {
-        var input = new TextBox { Text = initialValue, Dock = DockStyle.Fill };
+        var input = new TextBox { Text = initialValue };
+        var label = m_Text.Label(key, input);
+        label.Anchor = AnchorStyles.Left;
         input.TextChanged += (_, _) => update(input.Text);
-        panel.Controls.Add(m_Text.Label(key, input), column, 0);
-        panel.Controls.Add(input, column, 1);
+        panel.Controls.Add(label);
+        panel.Controls.Add(input);
         return input;
+    }
+
+    private GroupBox CreatePredictionFilters()
+    {
+        var group = new GroupBox { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top };
+        m_Text.Bind(() => group.Text = m_Text.Catalog["SYS_PREDICTION_FILTER"]);
+        int statsPerColumn = (m_ViewModel.GrowthRates.Count + 1) / 2;
+        var filters = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 4 };
+        for (int i = 0; i < 2; i++)
+        {
+            filters.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 1));
+        }
+        for (int i = 0; i < m_ViewModel.GrowthRates.Count; i++)
+        {
+            var stat = m_ViewModel.GrowthRates[i];
+            var label = new Label { AutoSize = true, Anchor = AnchorStyles.Left };
+            var selector = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
+            m_Text.Bind(() =>
+            {
+                label.Text = selector.AccessibleName = stat.Name;
+                selector.Items.Clear();
+                foreach (var option in m_ViewModel.GrowthConditionOptions)
+                {
+                    int index = selector.Items.Add(option.Name);
+                    if (option.Value == stat.Condition)
+                        selector.SelectedIndex = index;
+                }
+            });
+            selector.SelectionChangeCommitted += (_, _) =>
+                stat.Condition = m_ViewModel.GrowthConditionOptions[selector.SelectedIndex].Value;
+            int column = i / statsPerColumn * 2;
+            int row = i % statsPerColumn;
+            filters.Controls.Add(label, column, row);
+            filters.Controls.Add(selector, column + 1, row);
+        }
+        var counts = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = false };
+        var countLabel = m_Text.Label("SYS_FILTER_GROWTH_COUNT");
+        countLabel.Anchor = AnchorStyles.Left;
+        counts.Controls.Add(countLabel);
+        AddCount("SYS_FILTER_MIN_GROWTH_COUNT", m_ViewModel.MinGrowthCount, value => m_ViewModel.MinGrowthCount = value);
+        counts.Controls.Add(new Label { Text = "～", AutoSize = true, Anchor = AnchorStyles.Left });
+        AddCount("SYS_FILTER_MAX_GROWTH_COUNT", m_ViewModel.MaxGrowthCount, value => m_ViewModel.MaxGrowthCount = value);
+        filters.Controls.Add(counts, 0, statsPerColumn);
+        filters.SetColumnSpan(counts, filters.ColumnCount);
+        group.Controls.Add(filters);
+        return group;
+
+        void AddCount(string key, int value, Action<int> update)
+        {
+            var input = new NumericUpDown { Maximum = m_ViewModel.GrowthRates.Count, Value = value, Width = 48 };
+            m_Text.Bind(() => input.AccessibleName = m_Text.Catalog[key]);
+            input.ValueChanged += (_, _) => update((int)input.Value);
+            counts.Controls.Add(input);
+        }
     }
 
     private DataGridViewTextBoxColumn AddResultColumn(Func<string> header, int width)
@@ -179,10 +235,14 @@ public sealed partial class MainForm : Form
 
     private void RefreshPredictionResults()
     {
-        m_Error.Text = m_ViewModel.ErrorMessage;
+        UpdatePredictionMessage();
         m_Results.RowCount = m_ViewModel.Results.Count;
         m_Results.Invalidate();
     }
+
+    private void UpdatePredictionMessage() =>
+        m_Error.Text = m_ViewModel.ErrorMessage ?? (m_ViewModel.HasCalculated && m_ViewModel.Results.Count == 0
+            ? m_Text.Catalog["SYS_PREDICTION_NO_MATCHES"] : "");
 
     private void OnResultCellValueNeeded(object? sender, DataGridViewCellValueEventArgs e)
     {

@@ -135,6 +135,14 @@
         ? Model.WorkerCount > 0 ? Text.Format("SYS_SEARCH_RUNNING", Model.WorkerCount) : Text["SYS_SEARCH_PREPARING"]
         : Text[Model.HasCompleted ? "SYS_SEARCH_COMPLETED" : "SYS_SEARCH_CANCELLED"];
 
-    private Task Search() => Model.SearchWithWorkersAsync((rates, observations, targetStatCount, token) =>
-        BrowserSeedSearchPool.CreateAsync(JavaScript, rates, observations, targetStatCount, token));
+    private async Task Search()
+    {
+        await using var module = await JavaScript.InvokeAsync<IJSInProcessObjectReference>("import",
+            "./_content/FEFWRNGSolver.UI.Blazor/SeedSearchView.razor.js");
+        if (Model.IsRunning || !module.Invoke<bool>("confirmSearch", Text["SYS_CONFIRM_SMARTPHONE_SEARCH"]))
+            return;
+
+        await Model.SearchWithWorkersAsync((rates, observations, targetStatCount, token) =>
+            BrowserSeedSearchPool.CreateAsync(JavaScript, rates, observations, targetStatCount, token));
+    }
 }

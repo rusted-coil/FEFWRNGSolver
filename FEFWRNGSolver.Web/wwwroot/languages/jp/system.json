@@ -45,6 +45,7 @@
   "SYS_REMOVE_OBSERVATION": "{0}回目を削除",
   "SYS_REMOVE": "削除",
   "SYS_ADD_OBSERVATION": "レベルアップを追加",
+  "SYS_CONFIRM_SMARTPHONE_SEARCH": "スマートフォンでの探索は時間がかかり、端末のバッテリーを多く消費する可能性があります。実行してもよろしいですか？",
   "SYS_CANCEL_SEARCH": "探索を中止",
   "SYS_SEARCH_RESULTS": "探索結果",
   "SYS_SEARCH_PREPARING": "探索準備中",

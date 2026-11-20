@@ -45,6 +45,7 @@
   "SYS_REMOVE_OBSERVATION": "Remove level-up {0}",
   "SYS_REMOVE": "Remove",
   "SYS_ADD_OBSERVATION": "Add level-up",
+  "SYS_CONFIRM_SMARTPHONE_SEARCH": "Searching on a smartphone can take a long time and use a lot of battery power. Do you want to start the search?",
   "SYS_CANCEL_SEARCH": "Cancel search",
   "SYS_SEARCH_RESULTS": "Search results",
   "SYS_SEARCH_PREPARING": "Preparing search",

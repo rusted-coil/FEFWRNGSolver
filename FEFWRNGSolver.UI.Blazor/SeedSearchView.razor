@@ -9,7 +9,11 @@
     <fieldset class="search-inputs" disabled="@Model.IsRunning">
         <h2>@Text["SYS_SEARCH_OBSERVATIONS"]</h2>
         <p>@Text["SYS_OBSERVATION_GUIDE"]</p>
-        <p>@Text["SYS_OBSERVATION_CHECK_GUIDE"]</p>
+        <div class="observation-actions">
+            <button type="button" class="secondary" @onclick="AddObservation">@Text["SYS_ADD_OBSERVATION"]</button>
+            <button type="button" class="secondary" @onclick="RemoveSelectedObservation"
+                    disabled="@(Model.Observations.Count == 0)">@Text["SYS_REMOVE_SELECTED_ROW"]</button>
+        </div>
         <div class="table-scroll" tabindex="0" role="region" aria-label="@Text["SYS_OBSERVATIONS_REGION"]">
             <table class="observations">
                 <thead>
@@ -19,7 +23,6 @@
                         {
                             <th scope="col">@stat.Name</th>
                         }
-                        <th scope="col">@Text["SYS_ACTIONS"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -27,8 +30,15 @@
                     {
                         var rowIndex = i;
                         var row = Model.Observations[i];
-                        <tr @key="row">
-                            <th scope="row">@(i + 1)</th>
+                        <tr @key="row" class="@(m_SelectedRow == rowIndex ? "selected-row" : null)"
+                            @onclick="() => SelectRow(rowIndex)">
+                            <th scope="row">
+                                <label>
+                                    <input type="radio" name="selected-observation" checked="@(m_SelectedRow == rowIndex)"
+                                           @onchange="() => SelectRow(rowIndex)" aria-label="@Text.Format("SYS_SELECT_OBSERVATION", i + 1)" />
+                                    @(i + 1)
+                                </label>
+                            </th>
                             @for (int j = 0; j < row.Length; j++)
                             {
                                 var column = j;
@@ -42,14 +52,11 @@
                                     </label>
                                 </td>
                             }
-                            <td><button type="button" class="secondary"
-                                        aria-label="@Text.Format("SYS_REMOVE_OBSERVATION", i + 1)" @onclick="() => Model.RemoveObservation(rowIndex)">@Text["SYS_REMOVE"]</button></td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-        <button class="secondary add-observation" type="button" @onclick="Model.AddObservation">@Text["SYS_ADD_OBSERVATION"]</button>
     </fieldset>
     @if (Model.ErrorMessage is not null)
     {
@@ -102,11 +109,33 @@
     [CascadingParameter] public LocalizationCatalog Text { get; set; } = null!;
     [Parameter, EditorRequired] public SeedSearchViewModel Model { get; set; } = null!;
     [Parameter] public EventCallback<uint> SeedAdopted { get; set; }
+    private int m_SelectedRow;
+
+    private void SelectRow(int index)
+    {
+        if (!Model.IsRunning)
+            m_SelectedRow = index;
+    }
+
+    private void AddObservation()
+    {
+        Model.AddObservation();
+        m_SelectedRow = Model.Observations.Count - 1;
+    }
+
+    private void RemoveSelectedObservation()
+    {
+        if (m_SelectedRow >= 0 && m_SelectedRow < Model.Observations.Count)
+        {
+            Model.RemoveObservation(m_SelectedRow);
+            m_SelectedRow = Math.Min(m_SelectedRow, Model.Observations.Count - 1);
+        }
+    }
 
     private string SearchStatus => Model.IsRunning
         ? Model.WorkerCount > 0 ? Text.Format("SYS_SEARCH_RUNNING", Model.WorkerCount) : Text["SYS_SEARCH_PREPARING"]
         : Text[Model.HasCompleted ? "SYS_SEARCH_COMPLETED" : "SYS_SEARCH_CANCELLED"];
 
-    private Task Search() => Model.SearchWithWorkersAsync((rates, observations, token) =>
-        BrowserSeedSearchPool.CreateAsync(JavaScript, rates, observations, token));
+    private Task Search() => Model.SearchWithWorkersAsync((rates, observations, targetStatCount, token) =>
+        BrowserSeedSearchPool.CreateAsync(JavaScript, rates, observations, targetStatCount, token));
 }

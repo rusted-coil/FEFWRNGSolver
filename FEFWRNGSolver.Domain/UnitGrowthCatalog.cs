@@ -8,8 +8,8 @@ internal static partial class GrowthCatalog
     // ムウは「成長の兆し」込み
     internal static readonly ImmutableArray<UnitGrowthData> Units =
     [
-        new("PID_イシュマール/M", "イシュマール（男）", UnitGender.Male, new(50, 45, 45, 45, 45, 40, 35, 35, 50)),
-        new("PID_イシュマール/F", "イシュマール（女）", UnitGender.Female, new(50, 45, 45, 45, 45, 40, 35, 35, 50)),
+        new("PID_イシュマール/M", "イシュマール（男）", UnitGender.Male, new(50, 45, 45, 45, 45, 40, 35, 35, 50), HasPrePartThreeGuarantee: false),
+        new("PID_イシュマール/F", "イシュマール（女）", UnitGender.Female, new(50, 45, 45, 45, 45, 40, 35, 35, 50), HasPrePartThreeGuarantee: false),
         new("PID_カイ", "カイ", UnitGender.Male, new(45, 45, 40, 45, 45, 40, 35, 35, 40)),
         new("PID_ディートリヒ", "ディートリヒ", UnitGender.Male, new(50, 45, 30, 60, 50, 50, 40, 30, 60)),
         new("PID_セオドラ", "セオドラ", UnitGender.Female, new(70, 50, 30, 40, 40, 30, 40, 30, 50)),
@@ -32,9 +32,9 @@ internal static partial class GrowthCatalog
         new("PID_タリムーン", "タリムーン", UnitGender.Male, new(45, 40, 45, 45, 40, 60, 35, 40, 50)),
         new("PID_オルヘル", "オルヘル", UnitGender.Female, new(30, 60, 45, 20, 10, 20, 60, 60, 60)),
         new("PID_アナトリア", "アナトリア", UnitGender.Female, new(40, 35, 50, 45, 50, 40, 35, 40, 50)),
-        new("PID_セントリオン", "セントリオン", UnitGender.Male, new(45, 45, 25, 50, 40, 30, 50, 30, 30)),
-        new("PID_トロイア", "トロイア", UnitGender.Female, new(40, 45, 45, 40, 50, 30, 30, 30, 30)),
-        new("PID_コウカ", "コウカ", UnitGender.Female, new(40, 30, 45, 45, 45, 30, 30, 45, 40)),
+        new("PID_セントリオン", "セントリオン", UnitGender.Male, new(45, 45, 25, 50, 40, 30, 50, 30, 30), HasPrePartThreeGuarantee: false),
+        new("PID_トロイア", "トロイア", UnitGender.Female, new(40, 45, 45, 40, 50, 30, 30, 30, 30), HasPrePartThreeGuarantee: false),
+        new("PID_コウカ", "コウカ", UnitGender.Female, new(40, 30, 45, 45, 45, 30, 30, 45, 40), HasPrePartThreeGuarantee: false),
         new("PID_ゲイツ", "ゲイツ", UnitGender.Male, new(50, 50, 20, 45, 40, 40, 45, 25, 45)),
         new("PID_ウーシュラ", "ウーシュラ", UnitGender.Female, new(40, 35, 35, 50, 50, 40, 35, 30, 45)),
         new("PID_ディエゴ", "ディエゴ", UnitGender.Male, new(45, 40, 20, 60, 45, 35, 35, 20, 30)),
@@ -63,14 +63,14 @@ internal static partial class GrowthCatalog
         new("PID_ハルヴィン", "ハルヴィン", UnitGender.Female, new(35, 35, 30, 60, 45, 40, 30, 25, 35)),
         new("PID_セテス", "セテス", UnitGender.Male, new(45, 45, 30, 45, 40, 30, 40, 35, 50)),
         new("PID_ロレッタ", "ロレッタ", UnitGender.Female, new(35, 35, 35, 40, 55, 30, 30, 40, 30)),
-        new("PID_ネイサン", "ネイサン", UnitGender.Male, new(55, 60, 15, 60, 25, 25, 45, 15, 30)),
-        new("PID_キリーク", "キリーク", UnitGender.Male, new(45, 50, 15, 50, 60, 30, 35, 20, 35)),
+        new("PID_ネイサン", "ネイサン", UnitGender.Male, new(55, 60, 15, 60, 25, 25, 45, 15, 30), HasPrePartThreeGuarantee: false),
+        new("PID_キリーク", "キリーク", UnitGender.Male, new(45, 50, 15, 50, 60, 30, 35, 20, 35), HasPrePartThreeGuarantee: false),
         new("PID_ジャスミン", "ジャスミン", UnitGender.Female, new(50, 40, 20, 45, 30, 40, 45, 25, 45)),
         new("PID_キロイカ", "キロイカ", UnitGender.Male, new(55, 40, 15, 50, 55, 30, 30, 15, 25)),
         new("PID_イニオニ", "イニオニ", UnitGender.Female, new(40, 50, 20, 40, 35, 40, 40, 30, 30)),
         new("PID_ペペ", "ペペ", UnitGender.Male, new(30, 30, 25, 45, 60, 45, 30, 30, 30)),
-        new("PID_アスワン", "アスワン", UnitGender.Female, new(40, 35, 10, 50, 40, 30, 30, 15, 20)),
-        new("PID_タホウニア", "タホウニア", UnitGender.Female, new(65, 50, 5, 40, 20, 20, 45, 35, 40)),
-        new("PID_クラプカ", "クラプカ", UnitGender.Male, new(40, 40, 10, 45, 25, 25, 50, 15, 35)),
+        new("PID_アスワン", "アスワン", UnitGender.Female, new(40, 35, 10, 50, 40, 30, 30, 15, 20), HasPrePartThreeGuarantee: false),
+        new("PID_タホウニア", "タホウニア", UnitGender.Female, new(65, 50, 5, 40, 20, 20, 45, 35, 40), HasPrePartThreeGuarantee: false),
+        new("PID_クラプカ", "クラプカ", UnitGender.Male, new(40, 40, 10, 45, 25, 25, 50, 15, 35), HasPrePartThreeGuarantee: false),
     ];
 }

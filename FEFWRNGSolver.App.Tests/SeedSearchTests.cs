@@ -7,23 +7,24 @@ namespace FEFWRNGSolver.App.Tests;
 public sealed class SeedSearchTests
 {
     [DataTestMethod]
-    [DataRow(new short[] { 1, 2, 3, 0, 0, 0, 0, 0, 0 })]
-    [DataRow(new short[] { 115, 230, 50, 75, 70, 10, 0, 25, 60 })]
-    public void SplitScanMatchesForwardPredictionForConsecutiveObservations(short[] rates)
+    [DataRow(new short[] { 1, 2, 3, 0, 0, 0, 0, 0, 0 }, (byte)0)]
+    [DataRow(new short[] { 1, 2, 3, 0, 0, 0, 0, 0, 0 }, (byte)2)]
+    [DataRow(new short[] { 115, 230, 50, 75, 70, 10, 0, 25, 60 }, (byte)2)]
+    public void SplitScanMatchesForwardPredictionForConsecutiveObservations(short[] rates, byte targetStatCount)
     {
         var growthRates = rates.ToImmutableArray();
         const int count = 3;
-        var observations = LevelUpSimulation.Calculate(7, growthRates, count)
+        var observations = LevelUpSimulation.Calculate(7, growthRates, count, [], targetStatCount)
             .Select(step => step.StatGains.ToArray()).ToArray();
         var expected = new List<SeedSearchMatch>();
         for (uint seed = 0; seed < 512; seed++)
         {
-            var steps = LevelUpSimulation.Calculate(seed, growthRates, count).ToArray();
+            var steps = LevelUpSimulation.Calculate(seed, growthRates, count, [], targetStatCount).ToArray();
             if (steps.Select((step, level) => step.StatGains.SequenceEqual(observations[level])).All(match => match))
                 expected.Add(new SeedSearchMatch(seed, steps[^1].NextGrowthSeed));
         }
 
-        var search = new SeedSearch(growthRates, observations);
+        var search = new SeedSearch(growthRates, observations, targetStatCount);
         search.ScanRange(0, 97, default);
         search.ScanRange(97, 512, default);
 
@@ -51,7 +52,7 @@ public sealed class SeedSearchTests
     public void CountsAll31BitSeedsAndLimitsDisplayedCandidates()
     {
         // 2能力だけが対象のため、最低保証により必ず両方が上がる。
-        var search = new SeedSearch([1, 2, 0, 0, 0, 0, 0, 0, 0], [[1, 1, 0, 0, 0, 0, 0, 0, 0]]);
+        var search = new SeedSearch([1, 2, 0, 0, 0, 0, 0, 0, 0], [[1, 1, 0, 0, 0, 0, 0, 0, 0]], targetStatCount: 2);
         Assert.IsTrue(search.CanSkipEnumeration);
         search.ScanRange(0, 10, default);
         search.ScanRange(10, SeedSearch.CandidateCount, default);
@@ -81,7 +82,7 @@ public sealed class SeedSearchTests
     [DataRow(new int[] { 2, 1, 0, 0, 0, 0, 0, 0, 0 })]
     public void RejectsImpossibleObservedGainsAcrossFullRange(int[] observation)
     {
-        var search = new SeedSearch([25, 30, 50, 0, 0, 0, 0, 0, 0], [observation]);
+        var search = new SeedSearch([25, 30, 50, 0, 0, 0, 0, 0, 0], [observation], targetStatCount: 2);
         Assert.IsTrue(search.CanSkipEnumeration);
         search.ScanRange(0, SeedSearch.CandidateCount, default);
         Assert.AreEqual(0L, search.MatchCount);

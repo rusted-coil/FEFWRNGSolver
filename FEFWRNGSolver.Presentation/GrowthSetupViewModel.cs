@@ -8,14 +8,14 @@ public sealed record GrowthOption(string Id, string Name);
 public sealed class GrowthSetupViewModel
 {
     private readonly LocalizationCatalog m_Text;
-    private readonly GrowthRateMasterData m_Master = GrowthRateMasterData.Default;
+    private readonly GrowthRateMasterData m_Master;
     private LocalizedOptions? m_Options;
     private string m_UnitId = "";
     private string m_ClassId = "";
     private string m_AnimalId = "";
     private int m_Affection = AnimalGrowthData.MaxAffection;
 
-    internal GrowthSetupViewModel(LocalizationCatalog text) => m_Text = text;
+    internal GrowthSetupViewModel(LocalizationCatalog text, GrowthRateMasterData master) => (m_Text, m_Master) = (text, master);
 
     private sealed record LocalizedOptions(string Language, string UnitId, string ClassId,
         GrowthOption[] Units, GrowthOption[] Classes, GrowthOption[] Animals);
@@ -57,6 +57,7 @@ public sealed class GrowthSetupViewModel
 
     public static IReadOnlyList<int> AffectionLevels { get; } = [.. Enumerable.Range(0, AnimalGrowthData.MaxAffection + 1)];
     public bool IsManual => m_UnitId.Length == 0;
+    internal UnitGrowthData? SelectedUnit => m_Master.Units.GetValueOrDefault(UnitId);
     public bool HasAnimal => m_AnimalId.Length > 0;
     internal event Action? Changed;
     internal event Action? UnitChanged;

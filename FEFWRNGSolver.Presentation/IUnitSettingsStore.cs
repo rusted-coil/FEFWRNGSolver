@@ -2,7 +2,8 @@ using FEFWRNGSolver.Domain;
 
 namespace FEFWRNGSolver.Presentation;
 
-public sealed record UnitSettings(string ClassId, string AnimalId, int Affection, GrowthSkillBonus SkillBonus, uint? GrowthSeed);
+public sealed record UnitSettings(string ClassId, string AnimalId, int Affection, GrowthSkillBonus SkillBonus, uint? GrowthSeed,
+    bool IsPartThree = false);
 
 public interface IUnitSettingsStore
 {

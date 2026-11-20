@@ -46,18 +46,28 @@
             }
         </select>
     </label>
+    <label class="part-three">
+        <input type="checkbox" @bind="Model.IsPartThree" @bind:after="NotifyChanged" disabled="@(!Model.CanSelectPartThree)" />
+        @Text["SYS_PART_THREE"]
+    </label>
 </div>
-<fieldset>
-    <legend>@Text["SYS_GROWTH_RATES"]</legend>
-    <div class="rates">
-        @foreach (var stat in Model.GrowthRates)
-        {
-            <label>@stat.Name
-                <input @bind="stat.Rate" @bind:event="oninput" @bind:after="NotifyChanged" inputmode="numeric" />
-            </label>
-        }
-    </div>
-</fieldset>
+<div class="growth-inputs">
+    <fieldset>
+        <legend>@Text["SYS_GROWTH_RATES"]</legend>
+        <div class="rates">
+            @foreach (var stat in Model.GrowthRates)
+            {
+                <label>@stat.Name
+                    <input @bind="stat.Rate" @bind:event="oninput" @bind:after="NotifyChanged" inputmode="numeric" />
+                </label>
+            }
+        </div>
+    </fieldset>
+    <label class="guaranteed-count">@Text["SYS_GUARANTEED_STAT_COUNT"]
+        <input @bind="Model.GuaranteedStatCount" @bind:event="oninput" @bind:after="NotifyChanged"
+               inputmode="numeric" readonly="@(!setup.IsManual)" />
+    </label>
+</div>
 
 @code {
     [CascadingParameter] public LocalizationCatalog Text { get; set; } = null!;

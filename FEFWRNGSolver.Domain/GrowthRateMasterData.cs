@@ -13,7 +13,11 @@ public enum UnitGender { Male, Female }
 public enum AnimalType { Horse, Ornius, Pegasus, Bau, Elephant }
 
 /// <summary>ムウの個人成長率には「成長の兆し」を含めて登録します。</summary>
-public sealed record UnitGrowthData(string Id, string Name, UnitGender Gender, StatGrowthRates PersonalRates);
+public sealed record UnitGrowthData(string Id, string Name, UnitGender Gender, StatGrowthRates PersonalRates,
+    bool HasPrePartThreeGuarantee = true)
+{
+    public byte GetGuaranteedStatCount(bool isPartThree) => HasPrePartThreeGuarantee && !isPartThree ? (byte)2 : (byte)0;
+}
 
 public sealed record ClassGrowthData(string Id, string Name, StatGrowthRates Modifiers, bool FemaleOnly = false,
     AnimalType? AllowedAnimalType = null, int AnimalMultiplier = 1)
@@ -24,7 +28,7 @@ public sealed record ClassGrowthData(string Id, string Name, StatGrowthRates Mod
 
 public readonly record struct AssignedAnimal(string AnimalId, int Affection);
 public sealed record UnitGrowthSetup(string UnitId, string ClassId, AssignedAnimal? Animal = null,
-    GrowthSkillBonus SkillBonus = GrowthSkillBonus.None);
+    GrowthSkillBonus SkillBonus = GrowthSkillBonus.None, bool IsPartThree = false);
 
 public sealed class AnimalGrowthData
 {

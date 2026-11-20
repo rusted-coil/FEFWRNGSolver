@@ -9,14 +9,14 @@ internal sealed class BrowserSeedSearchPool(IJSObjectReference workers, int work
     public int WorkerCount { get; } = workerCount;
 
     public static async Task<ISeedSearchWorkerPool> CreateAsync(IJSRuntime js, short[] rates, int[][] observations,
-        CancellationToken cancellationToken)
+        byte targetStatCount, CancellationToken cancellationToken)
     {
         await using var module = await js.InvokeAsync<IJSObjectReference>("import", cancellationToken,
             "./_content/FEFWRNGSolver.UI.Blazor/seedWorkers.js");
         var workers = await module.InvokeAsync<IJSObjectReference>("createPool");
         try
         {
-            int count = await workers.InvokeAsync<int>("start", cancellationToken, rates, observations);
+            int count = await workers.InvokeAsync<int>("start", cancellationToken, rates, observations, targetStatCount);
             return new BrowserSeedSearchPool(workers, count);
         }
         catch

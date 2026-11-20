@@ -15,7 +15,7 @@ public sealed class SeedSearchViewModelTests
         for (int i = 0; i < rates.Length; i++)
             prediction.GrowthRates[i].Rate = rates[i].ToString();
         prediction.GrowthSeed = "00000000";
-        prediction.LevelUpCount = "3";
+        prediction.MaxAdvances = "2";
         Assert.IsTrue(prediction.Calculate(), prediction.ErrorMessage);
         Assert.AreEqual((1, 2), model.GetGainOptions()[1]);
 
@@ -81,11 +81,13 @@ public sealed class SeedSearchViewModelTests
     public async Task FailedWorkerBatchResumesFromConfirmedPrefix()
     {
         var model = new SeedSearchViewModel();
+        model.Settings.GuaranteedStatCount = "2";
         for (int i = 0; i < 3; i++)
             model.Settings.GrowthRates[i].Rate = "50";
         model.Observations[0][0] = model.Observations[0][1] = true;
 
         FailingWorkerPool? workers = null;
+        byte? workerGuarantee = null;
         long resumeAt = 0;
         model.Changed += () =>
         {
@@ -97,12 +99,14 @@ public sealed class SeedSearchViewModelTests
                     model.Cancel();
             }
         };
-        await model.SearchWithWorkersAsync((rates, rows, _) =>
+        await model.SearchWithWorkersAsync((rates, rows, targetStatCount, _) =>
         {
-            workers = new FailingWorkerPool(new SeedSearch([.. rates], rows));
+            workerGuarantee = targetStatCount;
+            workers = new FailingWorkerPool(new SeedSearch([.. rates], rows, targetStatCount));
             return Task.FromResult<ISeedSearchWorkerPool>(workers);
         });
 
+        Assert.AreEqual((byte)2, workerGuarantee);
         Assert.IsTrue(workers!.Disposed);
         Assert.IsTrue(model.WasCancelled);
         Assert.AreEqual(workers.FirstBatchEnd, resumeAt);
@@ -110,6 +114,23 @@ public sealed class SeedSearchViewModelTests
         var reference = workers.Search.EvaluateRange(0, model.Scanned, SeedSearch.MaxDisplayedMatches, default);
         Assert.AreEqual(reference.MatchCount, model.MatchCount);
         CollectionAssert.AreEqual(reference.Matches, model.Matches.ToArray());
+    }
+
+    [DataTestMethod]
+    [DataRow("")]
+    [DataRow("-1")]
+    [DataRow("1.5")]
+    [DataRow("10")]
+    public async Task InvalidGuaranteeStopsPredictionAndSearch(string input)
+    {
+        var model = new SeedSearchViewModel();
+        model.Settings.GrowthSeed = "00000000";
+        model.Settings.GuaranteedStatCount = input;
+        Assert.IsFalse(model.Settings.Calculate());
+        await model.SearchAsync();
+        Assert.AreEqual("最低保証は0～9の整数で入力してください。", model.ErrorMessage);
+        Assert.AreEqual(model.ErrorMessage, model.Settings.ErrorMessage);
+        Assert.AreEqual(0L, model.Scanned);
     }
 
     private sealed class FailingWorkerPool(SeedSearch search) : ISeedSearchWorkerPool

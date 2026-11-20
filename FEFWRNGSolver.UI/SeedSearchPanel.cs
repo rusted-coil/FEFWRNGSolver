@@ -46,7 +46,9 @@ internal sealed class SeedSearchPanel : UserControl
         Controls.Add(layout);
 
         layout.Controls.Add(text.Label("SYS_OBSERVATION_GUIDE"), 0, 0);
-        layout.Controls.Add(text.Label("SYS_OBSERVATION_CHECK_GUIDE"), 0, 1);
+        var observationActions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, Margin = Padding.Empty };
+        observationActions.Controls.AddRange([m_Add, m_Remove]);
+        layout.Controls.Add(observationActions, 0, 1);
         m_Observations.VirtualMode = true;
         m_Observations.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells;
         m_Observations.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
@@ -74,9 +76,9 @@ internal sealed class SeedSearchPanel : UserControl
                 SelectObservation(Math.Min(row, m_ViewModel.Observations.Count - 1));
             }
         };
-        var actions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top };
-        actions.Controls.AddRange([m_Add, m_Remove, m_Search, m_Cancel]);
-        layout.Controls.Add(actions, 0, 3);
+        var searchActions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, Margin = Padding.Empty };
+        searchActions.Controls.AddRange([m_Search, m_Cancel]);
+        layout.Controls.Add(searchActions, 0, 3);
         layout.Controls.Add(m_Status, 0, 4);
         layout.Controls.Add(m_Progress, 0, 5);
         m_Results.ReadOnly = true;

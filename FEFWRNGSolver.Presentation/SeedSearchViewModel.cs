@@ -67,19 +67,19 @@ public sealed class SeedSearchViewModel
 
     public Task SearchAsync(Func<Action, Task>? runSlice = null) => SearchCoreAsync(runSlice, null);
 
-    public Task SearchWithWorkersAsync(Func<short[], int[][], CancellationToken, Task<ISeedSearchWorkerPool>> createWorkers)
+    public Task SearchWithWorkersAsync(Func<short[], int[][], byte, CancellationToken, Task<ISeedSearchWorkerPool>> createWorkers)
     {
         ArgumentNullException.ThrowIfNull(createWorkers);
         return SearchCoreAsync(null, createWorkers);
     }
 
     private async Task SearchCoreAsync(Func<Action, Task>? runSlice,
-        Func<short[], int[][], CancellationToken, Task<ISeedSearchWorkerPool>>? createWorkers)
+        Func<short[], int[][], byte, CancellationToken, Task<ISeedSearchWorkerPool>>? createWorkers)
     {
         if (IsRunning)
             return;
         ResetResults();
-        if (!Settings.TryGetEffectiveRates(out var rates, out var error) || Observations.Count == 0)
+        if (!Settings.TryGetGrowthSettings(out var rates, out var targetStatCount, out var error) || Observations.Count == 0)
         {
             m_Error = Observations.Count == 0 ? new("SYS_NO_OBSERVATIONS") : error;
             Changed?.Invoke();
@@ -101,7 +101,7 @@ public sealed class SeedSearchViewModel
             gains[i] = level;
         }
 
-        var search = new SeedSearch(rates, gains);
+        var search = new SeedSearch(rates, gains, targetStatCount);
         using var cancellation = new CancellationTokenSource();
         m_Cancellation = cancellation;
         var token = cancellation.Token;
@@ -120,7 +120,7 @@ public sealed class SeedSearchViewModel
             {
                 try
                 {
-                    await using var workers = await createWorkers(rates.ToArray(), gains, token);
+                    await using var workers = await createWorkers(rates.ToArray(), gains, targetStatCount, token);
                     await ScanAsync(workers, onUiThread: false, token);
                 }
                 catch (Exception ex) when (ex is not OutOfMemoryException)

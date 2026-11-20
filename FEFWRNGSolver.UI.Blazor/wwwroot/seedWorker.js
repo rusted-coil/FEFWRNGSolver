@@ -8,7 +8,7 @@ self.addEventListener("message", async ({ data }) => {
             const { getAssemblyExports } = await dotnet.create();
             const exports = await getAssemblyExports("FEFWRNGSolver.UI.Blazor.dll");
             search = exports.FEFWRNGSolver.UI.Blazor.SeedSearchWorker;
-            search.Initialize(data.rates, data.observations);
+            search.Initialize(data.rates, data.observations, data.targetStatCount);
             self.postMessage({ result: true });
         } else {
             const result = search.Scan(data.start, data.end, data.sampleLimit);

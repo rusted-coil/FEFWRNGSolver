@@ -10,6 +10,65 @@ public sealed class UnitSettingsTests
     private const string Male = "PID_イシュマール/M";
 
     [TestMethod]
+    public void OnlyListedUnitsAreExemptFromThePrePartThreeGuarantee()
+    {
+        var model = new MainViewModel();
+        var exemptUnits = new List<string>();
+        foreach (var unit in GrowthRateMasterData.Default.UnitRoster)
+        {
+            model.Setup.UnitId = unit.Id;
+            if (!model.CanSelectPartThree)
+                exemptUnits.Add(unit.Id);
+            Assert.AreEqual(model.CanSelectPartThree ? "2" : "0", model.GuaranteedStatCount, unit.Id);
+            model.IsPartThree = true;
+            Assert.AreEqual(model.CanSelectPartThree, model.IsPartThree, unit.Id);
+            Assert.AreEqual("0", model.GuaranteedStatCount, unit.Id);
+        }
+        string[] expected = [Male, Female, "PID_コウカ", "PID_トロイア", "PID_キリーク", "PID_ネイサン",
+            "PID_セントリオン", "PID_アスワン", "PID_タホウニア", "PID_クラプカ"];
+        CollectionAssert.AreEquivalent(expected, exemptUnits);
+    }
+
+    [TestMethod]
+    public async Task AppliesPartThreeGuaranteeAndRestoresTheFlagPerUnit()
+    {
+        var unit = new UnitGrowthData("eligible", "対象", UnitGender.Female, new(1, 2, 3), HasPrePartThreeGuarantee: true);
+        var master = new GrowthRateMasterData([unit, unit with { Id = "other", HasPrePartThreeGuarantee = false }],
+            [new("job", "兵種", default)], []);
+        var text = await LocalizationCatalog.LoadAsync(_ => Task.FromResult<string?>(null), "jp", []);
+        var store = new JsonStore();
+        var legacy = UnitSettingsJson.Deserialize("""{"ClassId":"job","AnimalId":"","Affection":5,"SkillBonus":0,"GrowthSeed":123456789}""")!;
+        store.Save(unit.Id, legacy);
+        store.Save("other", legacy with { IsPartThree = true });
+        var model = new MainViewModel(store, text, master) { MaxAdvances = "0", GuaranteedStatCount = "3" };
+        model.Setup.UnitId = unit.Id;
+        model.GuaranteedStatCount = "8";
+        Assert.AreEqual("2", model.GuaranteedStatCount);
+        Assert.IsTrue(model.CanSelectPartThree);
+        Assert.IsFalse(model.IsPartThree);
+        Assert.IsTrue(model.Calculate());
+        Assert.AreEqual(2, model.Results.Single().StatGains.Sum());
+        model.IsPartThree = true;
+        Assert.AreEqual("0", model.GuaranteedStatCount);
+        Assert.IsTrue(store.Load(unit.Id)!.IsPartThree);
+        Assert.IsTrue(model.Calculate());
+        Assert.AreEqual(0, model.Results.Single().StatGains.Sum());
+
+        model.Setup.UnitId = "other";
+        Assert.IsFalse(model.CanSelectPartThree);
+        model.IsPartThree = true;
+        Assert.IsFalse(model.IsPartThree);
+        Assert.IsTrue(model.Calculate());
+        Assert.AreEqual(0, model.Results.Single().StatGains.Sum());
+        model.Setup.UnitId = unit.Id;
+        Assert.IsTrue(model.IsPartThree);
+        model.IsPartThree = false;
+        Assert.IsFalse(store.Load(unit.Id)!.IsPartThree);
+        model.Setup.UnitId = "";
+        Assert.AreEqual("3", model.GuaranteedStatCount);
+    }
+
+    [TestMethod]
     public void SavesEachSettingImmediatelyAndRestoresByUnitId()
     {
         var store = new JsonStore();
@@ -76,12 +135,12 @@ public sealed class UnitSettingsTests
         Assert.AreEqual(0xAu, store.Load(Female)!.GrowthSeed);
 
         model.GrowthSeed = "0000000b";
-        model.LevelUpCount = "0";
+        model.MaxAdvances = "-1";
         Assert.IsFalse(model.Calculate());
         Assert.AreEqual(0xBu, store.Load(Female)!.GrowthSeed);
         model.Setup.UnitId = "";
         model.AdoptGrowthSeed(0);
-        model.LevelUpCount = "1";
+        model.MaxAdvances = "0";
         Assert.IsTrue(model.Calculate(), model.ErrorMessage);
         Assert.IsNull(store.Load(""));
         model.Setup.UnitId = Female;

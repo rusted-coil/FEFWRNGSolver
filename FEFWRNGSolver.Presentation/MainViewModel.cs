@@ -11,10 +11,12 @@ public sealed class MainViewModel
     private readonly LocalizationCatalog m_Text;
     private ValidationError? m_Error;
     private GrowthSkillBonus m_SelectedSkillBonus;
+    private bool m_IsPartThree;
+    private string m_ManualGuaranteedStatCount = "2";
 
     public string Title => m_Text["SYS_APP_TITLE"];
     public string GrowthSeed { get; set; } = "";
-    public string LevelUpCount { get; set; } = "20";
+    public string MaxAdvances { get; set; } = "100";
     public int MinGrowthCount { get; set; }
     public int MaxGrowthCount { get; set; } = 9;
     public IReadOnlyList<GrowthConditionOption> GrowthConditionOptions =>
@@ -25,6 +27,28 @@ public sealed class MainViewModel
         new(StatGrowthCondition.MustNotGrow, m_Text["SYS_FILTER_MUST_NOT_GROW"])
     ];
     public GrowthSetupViewModel Setup { get; }
+    public bool CanSelectPartThree => Setup.SelectedUnit?.HasPrePartThreeGuarantee == true;
+    public string GuaranteedStatCount
+    {
+        get => Setup.SelectedUnit?.GetGuaranteedStatCount(IsPartThree).ToString(CultureInfo.InvariantCulture)
+            ?? m_ManualGuaranteedStatCount;
+        set
+        {
+            if (Setup.IsManual)
+                m_ManualGuaranteedStatCount = value;
+        }
+    }
+    public bool IsPartThree
+    {
+        get => m_IsPartThree;
+        set
+        {
+            if (!CanSelectPartThree || m_IsPartThree == value)
+                return;
+            m_IsPartThree = value;
+            SaveSettings();
+        }
+    }
     public ImmutableArray<short> SelectedGrowthRates
     {
         get
@@ -76,7 +100,7 @@ public sealed class MainViewModel
 
     public MainViewModel(IUnitSettingsStore store) : this(store, LocalizationCatalog.Default) { }
 
-    public MainViewModel(IUnitSettingsStore store, LocalizationCatalog text)
+    public MainViewModel(IUnitSettingsStore store, LocalizationCatalog text, GrowthRateMasterData? masterData = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(text);
@@ -89,7 +113,7 @@ public sealed class MainViewModel
             new(text, "SYS_SPEED_LABEL", 4), new(text, "SYS_DEXTERITY_LABEL", 3), new(text, "SYS_DEFENSE_LABEL", 6),
             new(text, "SYS_RESISTANCE_LABEL", 7), new(text, "SYS_LUCK_LABEL", 5), new(text, "SYS_CHARM_LABEL", 8)
         ];
-        Setup = new(text);
+        Setup = new(text, masterData ?? GrowthRateMasterData.Default);
         Setup.UnitChanged += RestoreUnit;
         Setup.Changed += OnSettingsChanged;
     }
@@ -98,6 +122,7 @@ public sealed class MainViewModel
     {
         var settings = Setup.IsManual ? null : m_Store.Load(Setup.UnitId);
         Setup.RestoreSelection(settings);
+        m_IsPartThree = CanSelectPartThree && settings?.IsPartThree == true;
         m_SelectedSkillBonus = settings?.SkillBonus ?? GrowthSkillBonus.None;
         GrowthSeed = settings?.GrowthSeed?.ToString("X8") ?? "";
         RefreshGrowthRates();
@@ -117,7 +142,7 @@ public sealed class MainViewModel
             return;
         // seed欄には入力途中の値もあるので、設定だけの変更では保存済みのseedを引き継ぐ。
         seed ??= m_Store.Load(Setup.UnitId)?.GrowthSeed;
-        m_Store.Save(Setup.UnitId, new(Setup.ClassId, Setup.AnimalId, Setup.Affection, SelectedSkillBonus, seed));
+        m_Store.Save(Setup.UnitId, new(Setup.ClassId, Setup.AnimalId, Setup.Affection, SelectedSkillBonus, seed, IsPartThree));
     }
 
     public void AdoptGrowthSeed(uint seed)
@@ -150,28 +175,26 @@ public sealed class MainViewModel
             return Fail(new("SYS_INVALID_GROWTH_SEED"));
 
         SaveSettings(seed);
-        if (!int.TryParse(LevelUpCount, NumberStyles.None, CultureInfo.InvariantCulture, out int count)
-            || count is < 1 or > 10_000)
-            return Fail(new("SYS_INVALID_LEVEL_COUNT"));
+        if (!int.TryParse(MaxAdvances, NumberStyles.None, CultureInfo.InvariantCulture, out int maxAdvances)
+            || maxAdvances is < 0 or > 10_000)
+            return Fail(new("SYS_INVALID_MAX_RNG_ADVANCES"));
 
         if (MinGrowthCount < 0 || MaxGrowthCount > GrowthRates.Count || MinGrowthCount > MaxGrowthCount)
             return Fail(new("SYS_INVALID_GROWTH_COUNT"));
 
-        if (!TryGetEffectiveRates(out var rates, out var error))
+        if (!TryGetGrowthSettings(out var rates, out var targetStatCount, out var error))
             return Fail(error);
 
         var cappedStats = GrowthRates.Where(input => input.Condition == StatGrowthCondition.Capped)
             .Select(input => input.InternalIndex).ToImmutableArray();
-        var steps = LevelUpSimulation.Calculate(seed, rates, count, cappedStats);
-        var rows = new List<LevelUpRow>(count);
-        int number = 0;
-        foreach (var step in steps)
+        var steps = LevelUpSimulation.PredictAtAdvances(seed, rates, maxAdvances, cappedStats, targetStatCount);
+        var rows = new List<LevelUpRow>(maxAdvances + 1);
+        foreach (var (advances, step) in steps.Index())
         {
-            number++;
             if (!MatchesGrowthConditions(step.StatGains))
                 continue;
             var gains = GrowthRates.Select(input => step.StatGains[input.InternalIndex]).ToImmutableArray();
-            rows.Add(new LevelUpRow(number, step.GrowthSeed.ToString("X8"), gains, step.NextGrowthSeed.ToString("X8")));
+            rows.Add(new LevelUpRow(advances, step.GrowthSeed.ToString("X8"), gains, step.NextGrowthSeed.ToString("X8")));
         }
         Results = rows.AsReadOnly();
         HasCalculated = true;
@@ -192,6 +215,17 @@ public sealed class MainViewModel
                 growthCount++;
         }
         return growthCount >= MinGrowthCount && growthCount <= MaxGrowthCount;
+    }
+
+    internal bool TryGetGrowthSettings(out ImmutableArray<short> rates, out byte targetStatCount, out ValidationError error)
+    {
+        if (byte.TryParse(GuaranteedStatCount, NumberStyles.None, CultureInfo.InvariantCulture, out targetStatCount)
+            && targetStatCount <= GrowthRates.Count)
+            return TryGetEffectiveRates(out rates, out error);
+
+        rates = default;
+        error = new("SYS_INVALID_GUARANTEED_STAT_COUNT");
+        return false;
     }
 
     internal bool TryGetEffectiveRates(out ImmutableArray<short> effectiveRates, out ValidationError error)
@@ -259,4 +293,4 @@ public sealed class GrowthRateInput
         m_UnitRate = unitRate?.ToString(CultureInfo.InvariantCulture);
 }
 
-public sealed record LevelUpRow(int Number, string GrowthSeed, ImmutableArray<int> StatGains, string NextGrowthSeed);
+public sealed record LevelUpRow(int Advances, string GrowthSeed, ImmutableArray<int> StatGains, string NextGrowthSeed);

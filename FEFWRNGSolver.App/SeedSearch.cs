@@ -15,9 +15,9 @@ public sealed class SeedSearch
     private readonly List<SeedSearchMatch> m_Matches = new(MaxDisplayedMatches);
     private long m_ScannedUntil;
 
-    public SeedSearch(ImmutableArray<short> effectiveRates, IReadOnlyList<int[]> observations)
+    public SeedSearch(ImmutableArray<short> effectiveRates, IReadOnlyList<int[]> observations, byte targetStatCount = 0)
     {
-        m_Observations = new ObservedGrowthSequence(effectiveRates.AsSpan(), 2, observations);
+        m_Observations = new ObservedGrowthSequence(effectiveRates.AsSpan(), targetStatCount, observations);
         Matches = m_Matches.AsReadOnly();
     }
 

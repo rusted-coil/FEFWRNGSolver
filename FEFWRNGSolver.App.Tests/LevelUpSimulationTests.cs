@@ -14,7 +14,7 @@ public sealed class LevelUpSimulationTests
         var steps = LevelUpSimulation.Calculate(0, GrowthRateMasterData.Default, setup, levelUpCount: 46);
 
         ImmutableArray<short> expectedRates = [70, 60, 25, 70, 50, 35, 60, 30, 55];
-        var expected = LevelUpSimulation.Calculate(0, expectedRates, levelUpCount: 46);
+        var expected = LevelUpSimulation.Calculate(0, expectedRates, levelUpCount: 46, cappedStatIndices: [], targetStatCount: 2);
         CollectionAssert.AreEqual(expected.SelectMany(step => step.StatGains).ToArray(),
             steps.SelectMany(step => step.StatGains).ToArray());
     }

@@ -11,10 +11,10 @@ internal static partial class SeedSearchWorker
     private static SeedSearch? m_Search;
 
     [JSExport]
-    internal static void Initialize(int[] rates, int[] observations)
+    internal static void Initialize(int[] rates, int[] observations, int targetStatCount)
     {
         m_Search = new SeedSearch([.. rates.Select(rate => checked((short)rate))],
-            observations.Chunk(rates.Length).ToArray());
+            observations.Chunk(rates.Length).ToArray(), checked((byte)targetStatCount));
     }
 
     [JSExport]

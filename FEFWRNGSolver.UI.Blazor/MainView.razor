@@ -32,8 +32,8 @@
                 <input class="seed" @bind="m_ViewModel.GrowthSeed" @bind:event="oninput"
                        placeholder="@Text["SYS_GROWTH_SEED_EXAMPLE"]" spellcheck="false" autocapitalize="characters" />
             </label>
-            <label>@Text["SYS_LEVEL_UP_COUNT"]
-                <input @bind="m_ViewModel.LevelUpCount" @bind:event="oninput" inputmode="numeric" />
+            <label>@Text["SYS_MAX_RNG_ADVANCES"]
+                <input @bind="m_ViewModel.MaxAdvances" @bind:event="oninput" inputmode="numeric" />
             </label>
         </div>
         <fieldset>
@@ -60,7 +60,6 @@
                        @bind="m_ViewModel.MaxGrowthCount" @bind:event="oninput" />
             </div>
         </fieldset>
-        <p>@Text["SYS_PREDICTION_RULES"]</p>
         @if (m_ViewModel.ErrorMessage is not null)
         {
             <p role="alert">@m_ViewModel.ErrorMessage</p>
@@ -73,7 +72,7 @@
         <table>
             <thead>
                 <tr>
-                    <th scope="col">@Text["SYS_LEVEL_NUMBER"]</th>
+                    <th scope="col">@Text["SYS_RNG_ADVANCES"]</th>
                     <th scope="col">@Text["SYS_GROWTH_SEED"]</th>
                     @foreach (var stat in m_ViewModel.GrowthRates)
                     {
@@ -90,8 +89,8 @@
                 else
                 {
                     <Virtualize TItem="LevelUpRow" ItemsProvider="GetRows" Context="row" ItemSize="40" SpacerElement="tr">
-                        <tr @key="row.Number">
-                            <td>@row.Number</td>
+                        <tr @key="row.Advances">
+                            <td>@row.Advances</td>
                             <SeedCell Seed="@row.GrowthSeed" SeedAdopted="AdoptSeed" />
                             @foreach (var gain in row.StatGains)
                             {

@@ -30,7 +30,7 @@ export function createPool() {
     }
 
     return {
-        async start(rates, observations) {
+        async start(rates, observations, targetStatCount) {
             // Worker 内にはページの import map が適用されないため、ここで公開用 URL を解決する。
             const runtimeUrl = import.meta.resolve(new URL("_framework/dotnet.js", document.baseURI).href);
             const workerUrl = import.meta.resolve("./seedWorker.js");
@@ -54,7 +54,7 @@ export function createPool() {
                     }
                 };
             }
-            const settings = { runtimeUrl, rates, observations: observations.flat() };
+            const settings = { runtimeUrl, rates, observations: observations.flat(), targetStatCount };
             await Promise.all(slots.map(slot => request(slot, settings)));
             return count;
         },

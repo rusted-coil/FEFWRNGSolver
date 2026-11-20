@@ -54,19 +54,18 @@ public sealed partial class MainForm : Form
         MainMenuStrip = CreateMenu(catalog, saveLanguage);
         Controls.Add(MainMenuStrip);
 
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(12) };
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(12) };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         for (int i = 0; i < layout.RowCount - 1; i++)
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         prediction.Controls.Add(layout);
-        layout.Controls.Add(m_Text.Label("SYS_PREDICTION_RULES"), 0, 0);
 
         var inputs = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = false };
         var seedInput = AddInput(inputs, "SYS_GROWTH_SEED_INPUT", m_ViewModel.GrowthSeed, value => m_ViewModel.GrowthSeed = value);
-        AddInput(inputs, "SYS_LEVEL_UP_COUNT", m_ViewModel.LevelUpCount, value => m_ViewModel.LevelUpCount = value);
-        layout.Controls.Add(inputs, 0, 1);
-        layout.Controls.Add(CreatePredictionFilters(), 0, 2);
+        AddInput(inputs, "SYS_MAX_RNG_ADVANCES", m_ViewModel.MaxAdvances, value => m_ViewModel.MaxAdvances = value);
+        layout.Controls.Add(inputs, 0, 0);
+        layout.Controls.Add(CreatePredictionFilters(), 0, 1);
 
         var actions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top };
         var calculate = new Button { AutoSize = true };
@@ -80,9 +79,9 @@ public sealed partial class MainForm : Form
         m_Error.Anchor = AnchorStyles.Left;
         actions.Controls.Add(m_Error);
         tabs.SelectedIndexChanged += (_, _) => AcceptButton = tabs.SelectedTab == prediction ? calculate : null;
-        layout.Controls.Add(actions, 0, 3);
+        layout.Controls.Add(actions, 0, 2);
 
-        AddResultColumn(() => catalog["SYS_LEVEL_NUMBER"], 52);
+        AddResultColumn(() => catalog["SYS_RNG_ADVANCES"], 68);
         var growthSeedColumn = AddResultColumn(() => catalog["SYS_GROWTH_SEED"], 110);
         foreach (var stat in m_ViewModel.GrowthRates)
             AddResultColumn(() => stat.Name, 42).DefaultCellStyle.Format = "+0;-0;0";
@@ -95,7 +94,7 @@ public sealed partial class MainForm : Form
                 e.ContextMenuStrip = seedMenu;
         };
         m_Results.CellValueNeeded += OnResultCellValueNeeded;
-        layout.Controls.Add(m_Results, 0, 4);
+        layout.Controls.Add(m_Results, 0, 3);
         m_Text.Bind(UpdatePredictionMessage);
 
         void ShowUnitTab()
@@ -253,7 +252,7 @@ public sealed partial class MainForm : Form
         var row = results[e.RowIndex];
         e.Value = e.ColumnIndex switch
         {
-            0 => row.Number,
+            0 => row.Advances,
             1 => row.GrowthSeed,
             var column when column == m_Results.ColumnCount - 1 => row.NextGrowthSeed,
             _ => row.StatGains[e.ColumnIndex - 2]

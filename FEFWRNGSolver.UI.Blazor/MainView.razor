@@ -5,7 +5,6 @@
 @inject IJSRuntime JavaScript
 @implements IDisposable
 
-<PageTitle>@m_ViewModel.Title</PageTitle>
 <fieldset class="unit-panel" disabled="@m_Search.IsRunning">
     <legend>@Text["SYS_UNIT"]</legend>
     <div class="unit-fields">
@@ -25,7 +24,7 @@
             @ref="m_PredictionTab" @onclick="() => m_ShowPrediction = true">@Text["SYS_PREDICTION_TAB"]</button>
 </div>
 <section id="prediction-panel" role="tabpanel" aria-labelledby="prediction-tab" hidden="@(!m_ShowPrediction)">
-    <h1>@Text["SYS_PREDICTION_HEADING"]</h1>
+    <h2>@Text["SYS_PREDICTION_TAB"]</h2>
     <form @onsubmit="Calculate" @onsubmit:preventDefault>
         <div class="prediction-settings">
             <label>@Text["SYS_GROWTH_SEED_INPUT"]
@@ -67,7 +66,7 @@
         <button type="submit">@Text["SYS_CALCULATE"]</button>
     </form>
 
-    <h2>@Text["SYS_PREDICTION_RESULTS"]</h2>
+    <h3>@Text["SYS_PREDICTION_RESULTS"]</h3>
     <div class="table-scroll" @key="m_ViewModel.Results" tabindex="0" role="region" aria-label="@Text["SYS_PREDICTION_RESULTS_REGION"]">
         <table>
             <thead>

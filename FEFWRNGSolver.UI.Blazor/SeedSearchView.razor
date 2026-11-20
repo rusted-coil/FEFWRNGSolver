@@ -4,10 +4,9 @@
 @inject IJSRuntime JavaScript
 @{ var gainOptions = Model.GetGainOptions(); }
 
-<h1>@Text["SYS_SEARCH_TAB"]</h1>
+<h2>@Text["SYS_SEARCH_TAB"]</h2>
 <form @onsubmit="Search" @onsubmit:preventDefault>
     <fieldset class="search-inputs" disabled="@Model.IsRunning">
-        <h2>@Text["SYS_SEARCH_OBSERVATIONS"]</h2>
         <p>@Text["SYS_OBSERVATION_GUIDE"]</p>
         <div class="observation-actions">
             <button type="button" class="secondary" @onclick="AddObservation">@Text["SYS_ADD_OBSERVATION"]</button>
@@ -74,7 +73,7 @@
 
 @if (Model.IsRunning || Model.HasCompleted || Model.WasCancelled)
 {
-    <h2>@Text["SYS_SEARCH_RESULTS"]</h2>
+    <h3>@Text["SYS_SEARCH_RESULTS"]</h3>
     <p role="status">@SearchStatus</p>
     <label class="search-progress">@Text.Format("SYS_SEARCH_PROGRESS", Model.Scanned, SeedSearchViewModel.CandidateCount)
         <progress value="@Model.Scanned" max="@SeedSearchViewModel.CandidateCount"></progress>

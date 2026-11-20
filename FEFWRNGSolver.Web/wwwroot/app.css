@@ -28,7 +28,8 @@ main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
 .tool-tabs button:hover { background: #d4e3dc; }
 .tool-tabs button[aria-selected="true"] { background: #1a6858; color: white; }
 h1 { margin: 0 0 1.25rem; font-size: clamp(1.5rem, 4vw, 2rem); }
-h2 { margin: 2rem 0 .75rem; font-size: 1.25rem; }
+h2 { margin: 0 0 1.25rem; font-size: 1.5rem; }
+h3 { margin: 2rem 0 .75rem; font-size: 1.25rem; }
 form, .table-scroll { background: white; border: 1px solid #cbd6d1; border-radius: .5rem; }
 form { padding: clamp(1rem, 3vw, 1.5rem); }
 label, legend { font-weight: 600; }
@@ -49,8 +50,8 @@ input, select { width: 100%; padding: .45rem .6rem; border: 1px solid #8b9d97; c
     margin-bottom: 1rem;
 }
 .growth-conditions label { grid-template-columns: 2.5rem minmax(0, 1fr); align-items: center; }
-.growth-count { display: flex; gap: .5rem; align-items: center; font-weight: 600; }
-.growth-count input { width: 4rem; min-width: 0; }
+.growth-count { display: flex; gap: .5rem; align-items: center; margin-bottom: 1rem; font-weight: 600; }
+.growth-count input { width: 3rem; min-width: 0; padding-inline: .25rem; }
 @media (max-width: 36rem) {
     .growth-conditions { column-gap: .75rem; }
     .growth-conditions label { grid-template-columns: minmax(0, 1fr); }
@@ -62,17 +63,18 @@ legend { padding: 0; margin-bottom: .6rem; }
 .unit-panel { margin: 0 0 1rem; padding: .5rem 1rem 1rem; background: white; border: 1px solid #cbd6d1; border-radius: .5rem; }
 .unit-panel > legend { padding: 0 .4rem; margin: 0; font-size: 1.25rem; }
 .unit-fields { overflow-x: auto; padding: .35rem; }
-.unit-selectors { display: grid; min-width: 52rem; grid-template-columns: 1fr 1.15fr 1.2fr .55fr 1.35fr auto; gap: .75rem; }
+.unit-selectors, .growth-inputs { display: grid; min-width: 52rem; }
+.unit-selectors { grid-template-columns: 20fr 23fr 25fr 10fr 22fr auto; gap: .75rem; }
 .unit-selectors label, .unit-selectors select { min-width: 0; }
-.part-three { display: flex; align-items: center; align-self: end; padding-block: .45rem; }
-.part-three input { width: auto; }
-.growth-inputs { display: flex; gap: 1rem; width: max-content; margin-top: 1.25rem; }
+.part-three { display: flex; align-items: center; align-self: end; padding-block: .45rem; white-space: nowrap; }
+.part-three input { width: auto; margin: 0; }
+.growth-inputs { grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; margin-top: 1.25rem; }
 .growth-inputs fieldset { margin: 0; }
 .guaranteed-count { align-content: space-between; }
-.guaranteed-count input { width: 4rem; font-size: .875rem; }
+.guaranteed-count input { width: 3.25rem; font-size: .875rem; }
 .guaranteed-count input:read-only { background: #f6f8f7; }
-.rates { display: grid; grid-template-columns: repeat(9, minmax(7ch, 4rem)); gap: .5rem; }
-.rates label { align-content: end; min-width: 0; overflow-wrap: anywhere; font-size: .875rem; }
+.rates { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: .5rem; }
+.rates label { grid-template-columns: auto minmax(0, 1fr); align-items: center; font-size: .875rem; }
 .rates input { min-width: 0; padding-inline: .25rem; }
 form p { color: #455953; font-size: .9rem; }
 form [role="alert"] { color: #a52d22; }

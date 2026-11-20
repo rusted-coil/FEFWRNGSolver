@@ -7,6 +7,9 @@
 
 @if (m_Catalog is not null)
 {
+    var title = m_Catalog["SYS_APP_TITLE"];
+    <PageTitle>@title</PageTitle>
+    <h1>@title</h1>
     <nav class="menu-bar">
         <details>
             <summary>@m_Catalog["SYS_SETTINGS"]</summary>

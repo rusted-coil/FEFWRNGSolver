@@ -7,10 +7,17 @@ public sealed class SeedSearchViewModel
 {
     public const long CandidateCount = SeedSearch.CandidateCount;
     private readonly List<bool[]> m_Observations = [new bool[9]];
+    private readonly LocalizationCatalog m_Text;
+    private ValidationError? m_Error;
     private CancellationTokenSource? m_Cancellation;
 
-    public SeedSearchViewModel() => Settings = new();
-    public SeedSearchViewModel(IUnitSettingsStore store) => Settings = new(store);
+    public SeedSearchViewModel() : this(new MemoryUnitSettingsStore()) { }
+    public SeedSearchViewModel(IUnitSettingsStore store) : this(store, LocalizationCatalog.Default) { }
+    public SeedSearchViewModel(IUnitSettingsStore store, LocalizationCatalog text)
+    {
+        Settings = new(store, text);
+        m_Text = text;
+    }
 
     public MainViewModel Settings { get; }
     public IReadOnlyList<bool[]> Observations => m_Observations;
@@ -21,7 +28,7 @@ public sealed class SeedSearchViewModel
     public long Scanned { get; private set; }
     public long MatchCount { get; private set; }
     public IReadOnlyList<SeedSearchMatch> Matches { get; private set; } = [];
-    public string? ErrorMessage { get; private set; }
+    public string? ErrorMessage => m_Error?.Translate(m_Text);
     public event Action? Changed;
 
     public void AddObservation()
@@ -72,9 +79,9 @@ public sealed class SeedSearchViewModel
         if (IsRunning)
             return;
         ResetResults();
-        if (!Settings.TryGetEffectiveRates(out var rates, out string error) || Observations.Count == 0)
+        if (!Settings.TryGetEffectiveRates(out var rates, out var error) || Observations.Count == 0)
         {
-            ErrorMessage = Observations.Count == 0 ? "観測したレベルアップを1行以上追加してください。" : error;
+            m_Error = Observations.Count == 0 ? new("SYS_NO_OBSERVATIONS") : error;
             Changed?.Invoke();
             return;
         }
@@ -192,6 +199,6 @@ public sealed class SeedSearchViewModel
         Scanned = 0;
         MatchCount = 0;
         Matches = [];
-        ErrorMessage = null;
+        m_Error = null;
     }
 }

@@ -1,0 +1,4 @@
+[
+  { "code": "jp", "displayName": "日本語", "matchCodes": ["ja"] },
+  { "code": "en", "displayName": "English", "matchCodes": ["en"] }
+]

@@ -3,6 +3,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
     <BlazorIcuDataFileName>icudt_CJK.dat</BlazorIcuDataFileName>
+    <!-- Serve the editable dictionaries directly, including after a post-publish edit. -->
+    <CompressionExcludePatterns>$(CompressionExcludePatterns);languages/**/*.json</CompressionExcludePatterns>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>

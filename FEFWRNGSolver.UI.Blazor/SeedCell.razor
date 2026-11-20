@@ -1,17 +1,19 @@
+@using FEFWRNGSolver.Presentation
 @using Microsoft.AspNetCore.Components.Web
 
 <td class="seed" tabindex="0" aria-haspopup="menu" @oncontextmenu:preventDefault @oncontextmenu="OpenMenu">
     @Seed
     @if (m_MenuPosition is not null)
     {
-        <div class="seed-menu" role="menu" aria-label="成長seedの操作" style="@m_MenuPosition">
+        <div class="seed-menu" role="menu" aria-label="@Text["SYS_SEED_ACTIONS"]" style="@m_MenuPosition">
             <button type="button" role="menuitem" @ref="m_MenuItem" @onblur="CloseMenu"
-                    @onkeydown="OnMenuKeyDown" @onclick="AdoptSeed">成長seedとして採用</button>
+                    @onkeydown="OnMenuKeyDown" @onclick="AdoptSeed">@Text["SYS_ADOPT_SEED"]</button>
         </div>
     }
 </td>
 
 @code {
+    [CascadingParameter] public LocalizationCatalog Text { get; set; } = null!;
     [Parameter, EditorRequired] public string Seed { get; set; } = "";
     [Parameter, EditorRequired] public EventCallback<uint> SeedAdopted { get; set; }
 

@@ -3,15 +3,15 @@
 
 @{ var setup = Model.Setup; }
 <div class="unit-selectors">
-    <label>ユニット
-        <select @bind="setup.UnitId" @bind:after="NotifyChanged">
+    <label>@Text["SYS_UNIT"]
+        <select @key="Text.Code" @bind="setup.UnitId" @bind:after="NotifyChanged">
             @foreach (var unit in setup.Units)
             {
                 <option value="@unit.Id">@unit.Name</option>
             }
         </select>
     </label>
-    <label>兵種
+    <label>@Text["SYS_JOB"]
         <select @key="setup.UnitId" @bind="setup.ClassId" @bind:after="NotifyChanged" disabled="@setup.IsManual">
             @foreach (var job in setup.Classes)
             {
@@ -19,7 +19,7 @@
             }
         </select>
     </label>
-    <label>動物
+    <label>@Text["SYS_ANIMAL"]
         <select @key="(setup.UnitId, setup.ClassId)" @bind="setup.AnimalId" @bind:after="NotifyChanged" disabled="@(setup.Animals.Count <= 1)">
             @foreach (var animal in setup.Animals)
             {
@@ -27,7 +27,7 @@
             }
         </select>
     </label>
-    <label>友好度
+    <label>@Text["SYS_AFFECTION"]
         <select @bind="setup.Affection" @bind:after="NotifyChanged" disabled="@(!setup.HasAnimal)">
             @foreach (var level in GrowthSetupViewModel.AffectionLevels)
             {
@@ -35,9 +35,9 @@
             }
         </select>
     </label>
-    <label>スキル補正
+    <label>@Text["SYS_SKILL_BONUS"]
         <select @bind="Model.SelectedSkillBonus" @bind:after="NotifyChanged">
-            @foreach (var option in MainViewModel.SkillBonusOptions)
+            @foreach (var option in Model.SkillOptions)
             {
                 <option value="@option.Value">@option.Name</option>
             }
@@ -45,7 +45,7 @@
     </label>
 </div>
 <fieldset>
-    <legend>成長率（％）</legend>
+    <legend>@Text["SYS_GROWTH_RATES"]</legend>
     <div class="rates">
         @foreach (var stat in Model.GrowthRates)
         {
@@ -57,6 +57,7 @@
 </fieldset>
 
 @code {
+    [CascadingParameter] public LocalizationCatalog Text { get; set; } = null!;
     [Parameter, EditorRequired] public MainViewModel Model { get; set; } = null!;
     [Parameter] public EventCallback SettingsChanged { get; set; }
 

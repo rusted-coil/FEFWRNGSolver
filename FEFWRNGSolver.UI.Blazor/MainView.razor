@@ -7,7 +7,7 @@
 
 <PageTitle>@m_ViewModel.Title</PageTitle>
 <fieldset class="unit-panel" disabled="@m_Search.IsRunning">
-    <legend>ユニット</legend>
+    <legend>@Text["SYS_UNIT"]</legend>
     <div class="unit-fields">
         <GrowthSettings Model="m_ViewModel" SettingsChanged="m_Search.InputsChanged" />
     </div>
@@ -16,52 +16,52 @@
 {
     <p role="alert">@m_Store.ErrorMessage</p>
 }
-<div class="tool-tabs" role="tablist" aria-label="ツール" @onkeydown="OnTabKeyDown">
+<div class="tool-tabs" role="tablist" aria-label="@Text["SYS_TOOLS"]" @onkeydown="OnTabKeyDown">
     <button type="button" role="tab" id="seed-tab" aria-controls="seed-panel"
             aria-selected="@(m_ShowPrediction ? "false" : "true")" tabindex="@(m_ShowPrediction ? -1 : 0)"
-            @ref="m_SeedTab" @onclick="() => m_ShowPrediction = false">成長seed特定</button>
+            @ref="m_SeedTab" @onclick="() => m_ShowPrediction = false">@Text["SYS_SEARCH_TAB"]</button>
     <button type="button" role="tab" id="prediction-tab" aria-controls="prediction-panel"
             aria-selected="@(m_ShowPrediction ? "true" : "false")" tabindex="@(m_ShowPrediction ? 0 : -1)"
-            @ref="m_PredictionTab" @onclick="() => m_ShowPrediction = true">レベルアップ予測</button>
+            @ref="m_PredictionTab" @onclick="() => m_ShowPrediction = true">@Text["SYS_PREDICTION_TAB"]</button>
 </div>
 <section id="prediction-panel" role="tabpanel" aria-labelledby="prediction-tab" hidden="@(!m_ShowPrediction)">
-    <h1>レベルアップ計算</h1>
+    <h1>@Text["SYS_PREDICTION_HEADING"]</h1>
     <form @onsubmit="Calculate" @onsubmit:preventDefault>
         <div class="settings">
-            <label>成長seed（16進数8桁）
+            <label>@Text["SYS_GROWTH_SEED_INPUT"]
                 <input class="seed" @bind="m_ViewModel.GrowthSeed" @bind:event="oninput"
-                       placeholder="1234ABCD" spellcheck="false" autocapitalize="characters" />
+                       placeholder="@Text["SYS_GROWTH_SEED_EXAMPLE"]" spellcheck="false" autocapitalize="characters" />
             </label>
-            <label>レベルアップ回数
+            <label>@Text["SYS_LEVEL_UP_COUNT"]
                 <input @bind="m_ViewModel.LevelUpCount" @bind:event="oninput" inputmode="numeric" />
             </label>
         </div>
-        <p>初期能力値はすべて0、上限は99、最低保証は2種類です。</p>
+        <p>@Text["SYS_PREDICTION_RULES"]</p>
         @if (m_ViewModel.ErrorMessage is not null)
         {
             <p role="alert">@m_ViewModel.ErrorMessage</p>
         }
-        <button type="submit">計算</button>
+        <button type="submit">@Text["SYS_CALCULATE"]</button>
     </form>
 
-    <h2>計算結果</h2>
-    <div class="table-scroll" @key="m_ViewModel.Results" tabindex="0" role="region" aria-label="レベルアップごとの計算結果">
+    <h2>@Text["SYS_PREDICTION_RESULTS"]</h2>
+    <div class="table-scroll" @key="m_ViewModel.Results" tabindex="0" role="region" aria-label="@Text["SYS_PREDICTION_RESULTS_REGION"]">
         <table>
             <thead>
                 <tr>
-                    <th scope="col">回数</th>
-                    <th scope="col">成長seed</th>
+                    <th scope="col">@Text["SYS_LEVEL_NUMBER"]</th>
+                    <th scope="col">@Text["SYS_GROWTH_SEED"]</th>
                     @foreach (var stat in m_ViewModel.GrowthRates)
                     {
                         <th scope="col">@stat.Name</th>
                     }
-                    <th scope="col">次の成長seed</th>
+                    <th scope="col">@Text["SYS_NEXT_GROWTH_SEED"]</th>
                 </tr>
             </thead>
             <tbody>
                 @if (m_ViewModel.Results.Count == 0)
                 {
-                    <tr><td class="empty" colspan="12">計算結果はまだありません。</td></tr>
+                    <tr><td class="empty" colspan="12">@Text["SYS_PREDICTION_EMPTY"]</td></tr>
                 }
                 else
                 {
@@ -86,6 +86,7 @@
 </section>
 
 @code {
+    [CascadingParameter] public LocalizationCatalog Text { get; set; } = null!;
     private BrowserUnitSettingsStore m_Store = null!;
     private SeedSearchViewModel m_Search = null!;
     private MainViewModel m_ViewModel => m_Search.Settings;
@@ -95,8 +96,8 @@
 
     protected override void OnInitialized()
     {
-        m_Store = new((IJSInProcessRuntime)JavaScript);
-        m_Search = new(m_Store);
+        m_Store = new((IJSInProcessRuntime)JavaScript, Text);
+        m_Search = new(m_Store, Text);
         m_Search.Changed += Refresh;
         m_ViewModel.UnitSelected += OnUnitSelected;
     }

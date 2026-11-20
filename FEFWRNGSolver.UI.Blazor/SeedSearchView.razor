@@ -4,23 +4,22 @@
 @inject IJSRuntime JavaScript
 @{ var gainOptions = Model.GetGainOptions(); }
 
-<h1>成長seed特定</h1>
+<h1>@Text["SYS_SEARCH_TAB"]</h1>
 <form @onsubmit="Search" @onsubmit:preventDefault>
     <fieldset class="search-inputs" disabled="@Model.IsRunning">
-        <h2>観測したレベルアップ</h2>
-        <p>同じ成長条件での抽選成長（最低保証2種類）を1回目から順に入力してください。
-            各能力が上限に達せず、途中でほかの行動が成長seedを消費していない連続した区間が対象です。</p>
-        <p>チェックで各能力の上昇量を切り替えられます。</p>
-        <div class="table-scroll" tabindex="0" role="region" aria-label="各回の能力上昇量">
+        <h2>@Text["SYS_SEARCH_OBSERVATIONS"]</h2>
+        <p>@Text["SYS_OBSERVATION_GUIDE"]</p>
+        <p>@Text["SYS_OBSERVATION_CHECK_GUIDE"]</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="@Text["SYS_OBSERVATIONS_REGION"]">
             <table class="observations">
                 <thead>
                     <tr>
-                        <th scope="col">回数</th>
+                        <th scope="col">@Text["SYS_LEVEL_NUMBER"]</th>
                         @foreach (var stat in Model.Settings.GrowthRates)
                         {
                             <th scope="col">@stat.Name</th>
                         }
-                        <th scope="col">操作</th>
+                        <th scope="col">@Text["SYS_ACTIONS"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -36,21 +35,21 @@
                                 var (low, high) = gainOptions[j];
                                 <td>
                                     <label>
-                                        <input type="checkbox" @bind="row[column]" @bind:after="Model.InputsChanged"
+                                        <input type="checkbox" @bind:get="(low == high ? low > 0 : row[column])"
+                                               @bind:set="(bool gained) => { row[column] = gained; Model.InputsChanged(); }"
                                                disabled="@(low == high)"
-                                               aria-label="@($"{i + 1}回目の{Model.Settings.GrowthRates[j].Name}の追加上昇")" />
-                                        +@(row[column] ? high : low)
+                                               aria-label="@Text.Format("SYS_OBSERVATION_GAIN", i + 1, Model.Settings.GrowthRates[j].Name)" />
                                     </label>
                                 </td>
                             }
                             <td><button type="button" class="secondary"
-                                        aria-label="@($"{i + 1}回目を削除")" @onclick="() => Model.RemoveObservation(rowIndex)">削除</button></td>
+                                        aria-label="@Text.Format("SYS_REMOVE_OBSERVATION", i + 1)" @onclick="() => Model.RemoveObservation(rowIndex)">@Text["SYS_REMOVE"]</button></td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-        <button class="secondary add-observation" type="button" @onclick="Model.AddObservation">レベルアップを追加</button>
+        <button class="secondary add-observation" type="button" @onclick="Model.AddObservation">@Text["SYS_ADD_OBSERVATION"]</button>
     </fieldset>
     @if (Model.ErrorMessage is not null)
     {
@@ -58,33 +57,33 @@
     }
     @if (Model.IsRunning)
     {
-        <button type="button" @onclick="Model.Cancel">探索を中止</button>
+        <button type="button" @onclick="Model.Cancel">@Text["SYS_CANCEL_SEARCH"]</button>
     }
     else
     {
-        <button type="submit">計算</button>
+        <button type="submit">@Text["SYS_CALCULATE"]</button>
     }
 </form>
 
 @if (Model.IsRunning || Model.HasCompleted || Model.WasCancelled)
 {
-    <h2>探索結果</h2>
+    <h2>@Text["SYS_SEARCH_RESULTS"]</h2>
     <p role="status">@SearchStatus</p>
-    <label class="search-progress">探索済み @Model.Scanned.ToString("N0") / @SeedSearchViewModel.CandidateCount.ToString("N0")
+    <label class="search-progress">@Text.Format("SYS_SEARCH_PROGRESS", Model.Scanned, SeedSearchViewModel.CandidateCount)
         <progress value="@Model.Scanned" max="@SeedSearchViewModel.CandidateCount"></progress>
     </label>
     <p>
-        一致した候補は @Model.MatchCount.ToString("N0") 件です。
+        @Text.Format("SYS_SEARCH_MATCHES", Model.MatchCount)
         @if (Model.MatchCount > Model.Matches.Count)
         {
-            <text>先頭 @Model.Matches.Count 件を表示します。</text>
+            @Text.Format("SYS_SEARCH_MATCH_LIMIT", Model.Matches.Count)
         }
     </p>
     @if (Model.Matches.Count > 0)
     {
-        <div class="table-scroll" tabindex="0" role="region" aria-label="一致した成長seedの候補">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="@Text["SYS_MATCHES_REGION"]">
             <table>
-                <thead><tr><th scope="col">観測開始時の成長seed</th><th scope="col">観測終了後の成長seed</th></tr></thead>
+                <thead><tr><th scope="col">@Text["SYS_MATCH_INITIAL"]</th><th scope="col">@Text["SYS_MATCH_NEXT"]</th></tr></thead>
                 <tbody>
                     @foreach (var match in Model.Matches)
                     {
@@ -100,12 +99,13 @@
 }
 
 @code {
+    [CascadingParameter] public LocalizationCatalog Text { get; set; } = null!;
     [Parameter, EditorRequired] public SeedSearchViewModel Model { get; set; } = null!;
     [Parameter] public EventCallback<uint> SeedAdopted { get; set; }
 
     private string SearchStatus => Model.IsRunning
-        ? Model.WorkerCount > 0 ? $"探索中（並列数 {Model.WorkerCount}）" : "探索準備中"
-        : Model.HasCompleted ? "探索完了" : "探索中断";
+        ? Model.WorkerCount > 0 ? Text.Format("SYS_SEARCH_RUNNING", Model.WorkerCount) : Text["SYS_SEARCH_PREPARING"]
+        : Text[Model.HasCompleted ? "SYS_SEARCH_COMPLETED" : "SYS_SEARCH_CANCELLED"];
 
     private Task Search() => Model.SearchWithWorkersAsync((rates, observations, token) =>
         BrowserSeedSearchPool.CreateAsync(JavaScript, rates, observations, token));

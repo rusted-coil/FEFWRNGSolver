@@ -1,0 +1,77 @@
+@using FEFWRNGSolver.Presentation
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@inject NavigationManager Navigation
+@inject IJSRuntime JavaScript
+@implements IAsyncDisposable
+
+@if (m_Catalog is not null)
+{
+    <nav class="menu-bar">
+        <details>
+            <summary>@m_Catalog["SYS_SETTINGS"]</summary>
+            <label>@m_Catalog["SYS_LANGUAGE"]
+                <select value="@m_Catalog.Code" @onchange="ChangeLanguage">
+                    @foreach (var language in m_Catalog.Languages)
+                    {
+                        <option value="@language.Code">@language.DisplayName</option>
+                    }
+                </select>
+            </label>
+        </details>
+    </nav>
+    <CascadingValue Value="m_Catalog">
+        <MainView />
+    </CascadingValue>
+}
+else
+{
+    <progress></progress>
+}
+
+@code {
+    private LocalizationCatalog? m_Catalog;
+    private IJSObjectReference? m_Browser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        m_Browser = await JavaScript.InvokeAsync<IJSObjectReference>("import",
+            "./_content/FEFWRNGSolver.UI.Blazor/language.js");
+        var preferred = await m_Browser.InvokeAsync<string[]>("preferredLanguages");
+        var saved = await m_Browser.InvokeAsync<string?>("savedLanguage");
+        using var client = new HttpClient { BaseAddress = new Uri(Navigation.BaseUri) };
+        m_Catalog = await LocalizationCatalog.LoadAsync(ReadFile, saved, preferred);
+        await SetDocumentLanguage();
+
+        async Task<string?> ReadFile(string path)
+        {
+            try
+            {
+                using var response = await client.GetAsync($"languages/{path}");
+                return response.IsSuccessStatusCode ? await response.Content.ReadAsStringAsync() : null;
+            }
+            catch (HttpRequestException)
+            {
+                return null;
+            }
+        }
+    }
+
+    private async Task ChangeLanguage(ChangeEventArgs args)
+    {
+        if (args.Value is not string code || m_Catalog is null || m_Browser is null)
+            return;
+        m_Catalog.Select(code);
+        await SetDocumentLanguage();
+        await m_Browser.InvokeVoidAsync("saveLanguage", m_Catalog.Code);
+    }
+
+    private ValueTask SetDocumentLanguage() => m_Browser!.InvokeVoidAsync("setDocumentLanguage",
+        m_Catalog!.Culture.Name.Length > 0 ? m_Catalog.Culture.Name : m_Catalog.Code);
+
+    public async ValueTask DisposeAsync()
+    {
+        if (m_Browser is not null)
+            await m_Browser.DisposeAsync();
+    }
+}

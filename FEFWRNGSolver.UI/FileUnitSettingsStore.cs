@@ -4,7 +4,7 @@ using FEFWRNGSolver.Presentation;
 
 namespace FEFWRNGSolver.UI;
 
-internal sealed class FileUnitSettingsStore(Action<string> reportError) : IUnitSettingsStore
+internal sealed class FileUnitSettingsStore(Action<string, string> reportError) : IUnitSettingsStore
 {
     private readonly string m_Directory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FEFWRNGSolver", "Units");
@@ -21,7 +21,7 @@ internal sealed class FileUnitSettingsStore(Action<string> reportError) : IUnitS
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
-            reportError($"ユニット設定を読み込めませんでした。\n{ex.Message}");
+            reportError("SYS_UNIT_SETTINGS_LOAD_ERROR", GetPath(unitId));
             return null;
         }
     }
@@ -44,7 +44,7 @@ internal sealed class FileUnitSettingsStore(Action<string> reportError) : IUnitS
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            reportError($"ユニット設定を保存できませんでした。\n{ex.Message}");
+            reportError("SYS_UNIT_SETTINGS_SAVE_ERROR", GetPath(unitId));
         }
     }
 

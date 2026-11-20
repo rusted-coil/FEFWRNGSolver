@@ -7,6 +7,11 @@
 * { box-sizing: border-box; }
 body { margin: 0; }
 main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+.menu-bar { margin-bottom: .75rem; border-bottom: 1px solid #cbd6d1; }
+.menu-bar details { position: relative; width: fit-content; }
+.menu-bar summary { cursor: pointer; padding: .45rem .75rem; }
+.menu-bar label { position: absolute; z-index: 3; min-width: 12rem; padding: .75rem; background: white;
+    border: 1px solid #cbd6d1; border-radius: .3rem; box-shadow: 0 .2rem .6rem #0002; }
 .tool-tabs {
     display: flex;
     gap: .25rem;
@@ -38,12 +43,11 @@ legend { padding: 0; margin-bottom: .6rem; }
 .unit-panel { margin: 0 0 1rem; padding: .5rem 1rem 1rem; background: white; border: 1px solid #cbd6d1; border-radius: .5rem; }
 .unit-panel > legend { padding: 0 .4rem; margin: 0; font-size: 1.25rem; }
 .unit-fields { overflow-x: auto; padding: .35rem; }
-.unit-fields > * { min-width: 48rem; }
-.unit-selectors { display: grid; grid-template-columns: 1fr 1.15fr 1.2fr .55fr 1.35fr; gap: .75rem; }
+.unit-selectors { display: grid; min-width: 48rem; grid-template-columns: 1fr 1.15fr 1.2fr .55fr 1.35fr; gap: .75rem; }
 .unit-selectors label, .unit-selectors select { min-width: 0; }
-.rates { display: flex; gap: .5rem; }
-.rates label { display: flex; flex: 1; min-width: 0; align-items: center; white-space: nowrap; font-size: .875rem; }
-.rates input { flex: 1; min-width: 0; padding-inline: .25rem; }
+.rates { display: grid; grid-template-columns: repeat(9, minmax(7ch, 4rem)); gap: .5rem; }
+.rates label { align-content: end; min-width: 0; overflow-wrap: anywhere; font-size: .875rem; }
+.rates input { min-width: 0; padding-inline: .25rem; }
 form p { color: #455953; font-size: .9rem; }
 form [role="alert"] { color: #a52d22; }
 button { padding: .55rem 2rem; border: 0; background: #1a6858; color: white; font-weight: 600; cursor: pointer; }
@@ -52,7 +56,8 @@ button.secondary { background: #e6eeea; color: #1d302e; }
 button.secondary:hover { background: #d4e3dc; }
 button:disabled { cursor: default; opacity: .55; }
 .search-inputs { margin: 0 0 1.25rem; }
-.observations label { display: inline-flex; align-items: center; gap: .25rem; padding: .3rem 0; cursor: pointer; }
+.observations { width: auto; }
+.observations label { display: inline-flex; padding: .3rem; cursor: pointer; }
 .observations input { width: 1.05rem; height: 1.05rem; margin: 0; accent-color: #1a6858; }
 .observations button { padding: .25rem .65rem; }
 .add-observation { margin-top: .6rem; }

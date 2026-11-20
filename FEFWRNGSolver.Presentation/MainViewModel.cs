@@ -8,12 +8,14 @@ namespace FEFWRNGSolver.Presentation;
 public sealed class MainViewModel
 {
     private readonly IUnitSettingsStore m_Store;
+    private readonly LocalizationCatalog m_Text;
+    private ValidationError? m_Error;
     private GrowthSkillBonus m_SelectedSkillBonus;
 
-    public string Title => "万紫千紅 乱数調整ツール";
+    public string Title => m_Text["SYS_APP_TITLE"];
     public string GrowthSeed { get; set; } = "";
     public string LevelUpCount { get; set; } = "1";
-    public GrowthSetupViewModel Setup { get; } = new();
+    public GrowthSetupViewModel Setup { get; }
     public ImmutableArray<short> SelectedGrowthRates
     {
         get
@@ -35,30 +37,40 @@ public sealed class MainViewModel
             OnSettingsChanged();
         }
     }
-    public static IReadOnlyList<SkillBonusOption> SkillBonusOptions { get; } =
+    public IReadOnlyList<SkillBonusOption> SkillOptions => GetSkillOptions(m_Text);
+    public static IReadOnlyList<SkillBonusOption> SkillBonusOptions => GetSkillOptions(LocalizationCatalog.Default);
+
+    private static SkillBonusOption[] GetSkillOptions(LocalizationCatalog text) =>
     [
-        new(GrowthSkillBonus.None, "スキル補正無し"),
-        new(GrowthSkillBonus.CharioteersPath35, "戦車兵の道（Lv35）"),
-        new(GrowthSkillBonus.CharioteersPath45, "戦車兵の道（Lv45）"),
-        new(GrowthSkillBonus.ElephantRidersPath45, "戦象兵の道（Lv45）")
+        new(GrowthSkillBonus.None, text["SYS_NO_SKILL_BONUS"]),
+        new(GrowthSkillBonus.CharioteersPath35, text.Format("SYS_SKILL_LEVEL_FORMAT", text.Skill("SID_戦車兵の道"), 35)),
+        new(GrowthSkillBonus.CharioteersPath45, text.Format("SYS_SKILL_LEVEL_FORMAT", text.Skill("SID_戦車兵の道"), 45)),
+        new(GrowthSkillBonus.ElephantRidersPath45, text.Format("SYS_SKILL_LEVEL_FORMAT", text.Skill("SID_戦象兵の道"), 45))
     ];
-    public string? ErrorMessage { get; private set; }
+    public string? ErrorMessage => m_Error?.Translate(m_Text);
     public IReadOnlyList<LevelUpRow> Results { get; private set; } = [];
     public event Action? UnitSelected;
 
-    // 表示順で並べ、内部番号には仕様書にある本作専用セーブエディタの保存配列順を使う。
-    public IReadOnlyList<GrowthRateInput> GrowthRates { get; } =
-    [
-        new("HP", 0), new("力", 1), new("魔力", 2), new("速さ", 4), new("技", 3),
-        new("守備", 6), new("魔防", 7), new("幸運", 5), new("魅力", 8)
-    ];
+    public IReadOnlyList<GrowthRateInput> GrowthRates { get; }
 
     public MainViewModel() : this(new MemoryUnitSettingsStore()) { }
 
-    public MainViewModel(IUnitSettingsStore store)
+    public MainViewModel(IUnitSettingsStore store) : this(store, LocalizationCatalog.Default) { }
+
+    public MainViewModel(IUnitSettingsStore store, LocalizationCatalog text)
     {
         ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(text);
         m_Store = store;
+        m_Text = text;
+        // 表示順で並べ、内部番号には仕様書にある本作専用セーブエディタの保存配列順を使う。
+        GrowthRates =
+        [
+            new(text, "SYS_HP_LABEL", 0), new(text, "SYS_STRENGTH_LABEL", 1), new(text, "SYS_MAGIC_LABEL", 2),
+            new(text, "SYS_SPEED_LABEL", 4), new(text, "SYS_DEXTERITY_LABEL", 3), new(text, "SYS_DEFENSE_LABEL", 6),
+            new(text, "SYS_RESISTANCE_LABEL", 7), new(text, "SYS_LUCK_LABEL", 5), new(text, "SYS_CHARM_LABEL", 8)
+        ];
+        Setup = new(text);
         Setup.UnitChanged += RestoreUnit;
         Setup.Changed += OnSettingsChanged;
     }
@@ -101,7 +113,7 @@ public sealed class MainViewModel
     private void ClearPrediction()
     {
         Results = [];
-        ErrorMessage = null;
+        m_Error = null;
     }
 
     private void RefreshGrowthRates()
@@ -119,14 +131,14 @@ public sealed class MainViewModel
     {
         if (GrowthSeed is not { Length: 8 } || !uint.TryParse(GrowthSeed, NumberStyles.AllowHexSpecifier,
                 CultureInfo.InvariantCulture, out uint seed))
-            return Fail("成長seedを8桁の16進数で入力してください（例：1234ABCD）。");
+            return Fail(new("SYS_INVALID_GROWTH_SEED"));
 
         SaveSettings(seed);
         if (!int.TryParse(LevelUpCount, NumberStyles.None, CultureInfo.InvariantCulture, out int count)
             || count is < 1 or > 10_000)
-            return Fail("レベルアップ回数は1～10000の整数で入力してください。");
+            return Fail(new("SYS_INVALID_LEVEL_COUNT"));
 
-        if (!TryGetEffectiveRates(out var rates, out string error))
+        if (!TryGetEffectiveRates(out var rates, out var error))
             return Fail(error);
 
         var steps = LevelUpSimulation.Calculate(seed, rates, count);
@@ -137,20 +149,20 @@ public sealed class MainViewModel
             rows.Add(new LevelUpRow(rows.Count + 1, step.GrowthSeed.ToString("X8"), gains, step.NextGrowthSeed.ToString("X8")));
         }
         Results = rows.AsReadOnly();
-        ErrorMessage = null;
+        m_Error = null;
         return true;
     }
 
-    internal bool TryGetEffectiveRates(out ImmutableArray<short> effectiveRates, out string error)
+    internal bool TryGetEffectiveRates(out ImmutableArray<short> effectiveRates, out ValidationError error)
     {
         effectiveRates = default;
-        error = "";
+        error = default;
         Span<short> rates = stackalloc short[GrowthRates.Count];
         foreach (var input in GrowthRates)
         {
             if (!short.TryParse(input.Rate, NumberStyles.None, CultureInfo.InvariantCulture, out rates[input.InternalIndex]))
             {
-                error = $"{input.Name}の成長率は0～32767の整数で入力してください。";
+                error = new("SYS_INVALID_GROWTH_RATE", input.NameKey);
                 return false;
             }
         }
@@ -158,25 +170,34 @@ public sealed class MainViewModel
         return true;
     }
 
-    private bool Fail(string message)
+    private bool Fail(ValidationError error)
     {
-        ErrorMessage = message;
+        m_Error = error;
         return false;
     }
 }
 
 public sealed record SkillBonusOption(GrowthSkillBonus Value, string Name);
 
+internal readonly record struct ValidationError(string Key, string? StatNameKey = null)
+{
+    public string Translate(LocalizationCatalog text) =>
+        StatNameKey is null ? text[Key] : text.Format(Key, text[StatNameKey]);
+}
+
 public sealed class GrowthRateInput
 {
+    private readonly LocalizationCatalog m_Text;
     private string? m_UnitRate;
     private string m_ManualRate = "0";
     private short m_SkillBonusAtInput;
     private short m_SkillBonus;
 
-    internal GrowthRateInput(string name, int internalIndex) => (Name, InternalIndex) = (name, internalIndex);
+    internal GrowthRateInput(LocalizationCatalog text, string nameKey, int internalIndex) =>
+        (m_Text, NameKey, InternalIndex) = (text, nameKey, internalIndex);
 
-    public string Name { get; }
+    internal string NameKey { get; }
+    public string Name => m_Text[NameKey];
     public string Rate
     {
         get

@@ -7,5 +7,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../FEFWRNGSolver.App/FEFWRNGSolver.App.csproj" />
+    <EmbeddedResource Include="../FEFWRNGSolver.Web/wwwroot/languages/jp/*.json" LogicalName="Localization.jp.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

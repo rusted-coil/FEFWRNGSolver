@@ -4,7 +4,7 @@ namespace FEFWRNGSolver.UI;
 
 internal sealed class SeedCellMenu : ContextMenuStrip
 {
-    public SeedCellMenu(DataGridView grid, Action<uint> adoptSeed)
+    public SeedCellMenu(DataGridView grid, WindowText text, Action<uint> adoptSeed)
     {
         grid.CellMouseDown += (_, e) =>
         {
@@ -15,11 +15,12 @@ internal sealed class SeedCellMenu : ContextMenuStrip
                     grid.CurrentCell = cell;
             }
         };
-        Items.Add("成長seedとして採用", null, (_, _) =>
+        var adopt = Items.Add("", null, (_, _) =>
         {
             if (grid.CurrentCell?.FormattedValue is string text &&
                 uint.TryParse(text, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out uint seed))
                 adoptSeed(seed);
         });
+        text.Bind(() => adopt.Text = text.Catalog["SYS_ADOPT_SEED"]);
     }
 }

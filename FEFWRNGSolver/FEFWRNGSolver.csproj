@@ -10,6 +10,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../FEFWRNGSolver.UI/FEFWRNGSolver.UI.csproj" />
+    <Content Include="../FEFWRNGSolver.Web/wwwroot/languages/**/*.json" Link="languages/%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
 </Project>

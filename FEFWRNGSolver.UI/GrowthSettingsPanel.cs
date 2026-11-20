@@ -5,18 +5,20 @@ namespace FEFWRNGSolver.UI;
 internal sealed class GrowthSettingsPanel : GroupBox
 {
     private readonly MainViewModel m_ViewModel;
+    private readonly WindowText m_Text;
     private readonly List<TextBox> m_RateInputs = [];
     private bool m_Refreshing;
 
     public event Action? Changed;
 
-    public GrowthSettingsPanel(MainViewModel viewModel)
+    public GrowthSettingsPanel(MainViewModel viewModel, WindowText text)
     {
         m_ViewModel = viewModel;
+        m_Text = text;
         AutoSize = true;
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
         Dock = DockStyle.Top;
-        Text = "ユニット";
+        m_Text.Bind(() => Text = m_Text.Catalog["SYS_UNIT"]);
         Padding = new Padding(8, 3, 8, 5);
         var layout = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -25,15 +27,17 @@ internal sealed class GrowthSettingsPanel : GroupBox
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         Controls.Add(layout);
         layout.Controls.Add(CreateSetupSelectors(), 0, 0);
-        layout.Controls.Add(new Label { Text = "成長率（％）", AutoSize = true }, 0, 1);
+        layout.Controls.Add(m_Text.Label("SYS_GROWTH_RATES"), 0, 1);
 
         var rates = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 2 * viewModel.GrowthRates.Count, RowCount = 1 };
         foreach (var stat in viewModel.GrowthRates)
         {
             rates.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             rates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 1));
-            rates.Controls.Add(new Label { Text = stat.Name, AutoSize = true, Anchor = AnchorStyles.Left });
-            var input = new TextBox { AccessibleName = stat.Name, Text = stat.Rate, Dock = DockStyle.Fill };
+            var label = new Label { AutoSize = true, Anchor = AnchorStyles.Left };
+            rates.Controls.Add(label);
+            var input = new TextBox { Text = stat.Rate, Dock = DockStyle.Fill };
+            m_Text.Bind(() => label.Text = input.AccessibleName = stat.Name);
             input.TextChanged += (_, _) =>
             {
                 if (!m_Refreshing)
@@ -52,15 +56,20 @@ internal sealed class GrowthSettingsPanel : GroupBox
     {
         var setup = m_ViewModel.Setup;
         var panel = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 5, RowCount = 2 };
-        var unit = AddSelector(panel, 0, "ユニット", 20);
-        var job = AddSelector(panel, 1, "兵種", 23);
-        var animal = AddSelector(panel, 2, "動物", 25);
-        var affection = AddSelector(panel, 3, "友好度", 10);
-        var skill = AddSelector(panel, 4, "スキル補正", 22);
+        var unit = AddSelector(panel, 0, "SYS_UNIT", 20);
+        var job = AddSelector(panel, 1, "SYS_JOB", 23);
+        var animal = AddSelector(panel, 2, "SYS_ANIMAL", 25);
+        var affection = AddSelector(panel, 3, "SYS_AFFECTION", 10);
+        var skill = AddSelector(panel, 4, "SYS_SKILL_BONUS", 22);
         skill.DisplayMember = nameof(SkillBonusOption.Name);
-        skill.Items.AddRange(MainViewModel.SkillBonusOptions.ToArray());
-        SetOptions(unit, setup.Units, setup.UnitId);
         affection.Items.AddRange(GrowthSetupViewModel.AffectionLevels.Cast<object>().ToArray());
+        m_Text.Bind(() =>
+        {
+            SetOptions(unit, setup.Units, setup.UnitId);
+            skill.Items.Clear();
+            skill.Items.AddRange(m_ViewModel.SkillOptions.ToArray());
+            RefreshSelections();
+        });
 
         void RefreshSelections()
         {
@@ -70,8 +79,7 @@ internal sealed class GrowthSettingsPanel : GroupBox
             animal.Enabled = !setup.IsManual && setup.Animals.Count > 1;
             affection.Enabled = setup.HasAnimal;
             affection.SelectedItem = setup.Affection;
-            skill.SelectedItem = MainViewModel.SkillBonusOptions.First(option => option.Value == m_ViewModel.SelectedSkillBonus);
-            RefreshRates();
+            skill.SelectedItem = m_ViewModel.SkillOptions.First(option => option.Value == m_ViewModel.SelectedSkillBonus);
         }
 
         // 候補の差し替えでは発火しないイベントを使い、利用者の変更だけを反映する。
@@ -79,16 +87,19 @@ internal sealed class GrowthSettingsPanel : GroupBox
         {
             setup.UnitId = ((GrowthOption)unit.SelectedItem!).Id;
             RefreshSelections();
+            RefreshRates();
         };
         job.SelectionChangeCommitted += (_, _) =>
         {
             setup.ClassId = ((GrowthOption)job.SelectedItem!).Id;
             RefreshSelections();
+            RefreshRates();
         };
         animal.SelectionChangeCommitted += (_, _) =>
         {
             setup.AnimalId = ((GrowthOption)animal.SelectedItem!).Id;
             RefreshSelections();
+            RefreshRates();
         };
         affection.SelectionChangeCommitted += (_, _) =>
         {
@@ -100,15 +111,14 @@ internal sealed class GrowthSettingsPanel : GroupBox
             m_ViewModel.SelectedSkillBonus = ((SkillBonusOption)skill.SelectedItem!).Value;
             RefreshRates();
         };
-        RefreshSelections();
         return panel;
     }
 
-    private static ComboBox AddSelector(TableLayoutPanel panel, int column, string name, int widthPercent)
+    private ComboBox AddSelector(TableLayoutPanel panel, int column, string key, int widthPercent)
     {
-        var selector = new ComboBox { AccessibleName = name, DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
+        var selector = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, widthPercent));
-        panel.Controls.Add(new Label { AutoSize = true, Text = name }, column, 0);
+        panel.Controls.Add(m_Text.Label(key, selector), column, 0);
         panel.Controls.Add(selector, column, 1);
         return selector;
     }

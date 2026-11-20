@@ -9,7 +9,7 @@ public sealed class MainViewModelTests
     public void ListsManualInputFirstAndUnitsInJapaneseNameOrder()
     {
         var units = new MainViewModel().Setup.Units;
-        Assert.AreEqual(new GrowthOption("", "手入力"), units[0]);
+        Assert.AreEqual(new GrowthOption("", "指定無し"), units[0]);
         string[] expectedOrder = ["アスワン", "ウーシュラ", "ウルタンド", "ジェスター", "タリムーン", "ロレッタ"];
         var displayedOrder = units.Skip(1).Select(unit => unit.Name).Where(expectedOrder.Contains).ToArray();
         CollectionAssert.AreEqual(expectedOrder, displayedOrder);

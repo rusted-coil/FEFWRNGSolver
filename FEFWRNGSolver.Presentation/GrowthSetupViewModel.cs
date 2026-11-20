@@ -19,7 +19,7 @@ public sealed class GrowthSetupViewModel
     {
         var japanese = StringComparer.Create(CultureInfo.GetCultureInfo("ja-JP"), ignoreCase: false);
         var sortedUnits = m_Master.UnitRoster.OrderBy(unit => unit.Name, japanese);
-        Units = [new("", "手入力"), .. sortedUnits.Select(unit => new GrowthOption(unit.Id, unit.Name))];
+        Units = [new("", "指定無し"), .. sortedUnits.Select(unit => new GrowthOption(unit.Id, unit.Name))];
     }
 
     public IReadOnlyList<GrowthOption> Units { get; }

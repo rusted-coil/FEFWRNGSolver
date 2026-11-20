@@ -25,7 +25,7 @@ internal sealed class GrowthSettingsPanel : GroupBox
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         Controls.Add(layout);
         layout.Controls.Add(CreateSetupSelectors(), 0, 0);
-        layout.Controls.Add(new Label { Text = "実効成長率（％）", AutoSize = true }, 0, 1);
+        layout.Controls.Add(new Label { Text = "成長率（％）", AutoSize = true }, 0, 1);
 
         var rates = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 2 * viewModel.GrowthRates.Count, RowCount = 1 };
         foreach (var stat in viewModel.GrowthRates)

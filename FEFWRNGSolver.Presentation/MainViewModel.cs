@@ -150,7 +150,7 @@ public sealed class MainViewModel
         {
             if (!short.TryParse(input.Rate, NumberStyles.None, CultureInfo.InvariantCulture, out rates[input.InternalIndex]))
             {
-                error = $"{input.Name}の実効成長率は0～32767の整数で入力してください。";
+                error = $"{input.Name}の成長率は0～32767の整数で入力してください。";
                 return false;
             }
         }

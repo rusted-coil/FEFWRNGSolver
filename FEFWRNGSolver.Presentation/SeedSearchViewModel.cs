@@ -9,7 +9,10 @@ public sealed class SeedSearchViewModel
     private readonly List<bool[]> m_Observations = [new bool[9]];
     private CancellationTokenSource? m_Cancellation;
 
-    public MainViewModel Settings { get; } = new();
+    public SeedSearchViewModel() => Settings = new();
+    public SeedSearchViewModel(IUnitSettingsStore store) => Settings = new(store);
+
+    public MainViewModel Settings { get; }
     public IReadOnlyList<bool[]> Observations => m_Observations;
     public bool IsRunning => m_Cancellation is not null;
     public bool HasCompleted { get; private set; }

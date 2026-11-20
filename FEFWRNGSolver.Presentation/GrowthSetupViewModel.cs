@@ -29,6 +29,7 @@ public sealed class GrowthSetupViewModel
     public bool IsManual => m_UnitId.Length == 0;
     public bool HasAnimal => m_AnimalId.Length > 0;
     internal event Action? Changed;
+    internal event Action? UnitChanged;
 
     public string UnitId
     {
@@ -41,10 +42,17 @@ public sealed class GrowthSetupViewModel
                 .Select(job => new GrowthOption(job.Id, job.Name)).ToArray();
             m_UnitId = value;
             Classes = classes;
-            if (!Classes.Any(job => job.Id == ClassId))
-                SetClass(classes.FirstOrDefault()?.Id ?? "");
-            Changed?.Invoke();
+            UnitChanged?.Invoke();
         }
+    }
+
+    internal void RestoreSelection(UnitSettings? settings)
+    {
+        var job = Classes.FirstOrDefault(job => job.Id == settings?.ClassId) ?? Classes.FirstOrDefault();
+        SetClass(job?.Id ?? "");
+        m_AnimalId = Animals.FirstOrDefault(animal => animal.Id == settings?.AnimalId)?.Id ?? "";
+        m_Affection = settings is { Affection: >= 0 and <= AnimalGrowthData.MaxAffection }
+            ? settings.Affection : AnimalGrowthData.MaxAffection;
     }
 
     public string ClassId

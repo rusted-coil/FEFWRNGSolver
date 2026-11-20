@@ -7,6 +7,9 @@ namespace FEFWRNGSolver.Presentation;
 
 public sealed class MainViewModel
 {
+    private readonly IUnitSettingsStore m_Store;
+    private GrowthSkillBonus m_SelectedSkillBonus;
+
     public string Title => "万紫千紅 乱数調整ツール";
     public string GrowthSeed { get; set; } = "";
     public string LevelUpCount { get; set; } = "1";
@@ -23,13 +26,13 @@ public sealed class MainViewModel
     }
     public GrowthSkillBonus SelectedSkillBonus
     {
-        get;
+        get => m_SelectedSkillBonus;
         set
         {
-            if (field == value)
+            if (m_SelectedSkillBonus == value)
                 return;
-            field = value;
-            RefreshGrowthRates();
+            m_SelectedSkillBonus = value;
+            OnSettingsChanged();
         }
     }
     public static IReadOnlyList<SkillBonusOption> SkillBonusOptions { get; } =
@@ -41,6 +44,7 @@ public sealed class MainViewModel
     ];
     public string? ErrorMessage { get; private set; }
     public IReadOnlyList<LevelUpRow> Results { get; private set; } = [];
+    public event Action? UnitSelected;
 
     // 表示順で並べ、内部番号には仕様書にある本作専用セーブエディタの保存配列順を使う。
     public IReadOnlyList<GrowthRateInput> GrowthRates { get; } =
@@ -49,7 +53,56 @@ public sealed class MainViewModel
         new("守備", 6), new("魔防", 7), new("幸運", 5), new("魅力", 8)
     ];
 
-    public MainViewModel() => Setup.Changed += RefreshGrowthRates;
+    public MainViewModel() : this(new MemoryUnitSettingsStore()) { }
+
+    public MainViewModel(IUnitSettingsStore store)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        m_Store = store;
+        Setup.UnitChanged += RestoreUnit;
+        Setup.Changed += OnSettingsChanged;
+    }
+
+    private void RestoreUnit()
+    {
+        var settings = Setup.IsManual ? null : m_Store.Load(Setup.UnitId);
+        Setup.RestoreSelection(settings);
+        if (!Setup.IsManual)
+            m_SelectedSkillBonus = settings is not null && Enum.IsDefined(settings.SkillBonus)
+                ? settings.SkillBonus : GrowthSkillBonus.None;
+        GrowthSeed = settings?.GrowthSeed?.ToString("X8") ?? "";
+        RefreshGrowthRates();
+        ClearPrediction();
+        UnitSelected?.Invoke();
+    }
+
+    private void OnSettingsChanged()
+    {
+        RefreshGrowthRates();
+        SaveSettings();
+    }
+
+    private void SaveSettings(uint? seed = null)
+    {
+        if (Setup.IsManual)
+            return;
+        // seed欄には入力途中の値もあるので、設定だけの変更では保存済みのseedを引き継ぐ。
+        seed ??= m_Store.Load(Setup.UnitId)?.GrowthSeed;
+        m_Store.Save(Setup.UnitId, new(Setup.ClassId, Setup.AnimalId, Setup.Affection, SelectedSkillBonus, seed));
+    }
+
+    public void AdoptGrowthSeed(uint seed)
+    {
+        GrowthSeed = seed.ToString("X8");
+        SaveSettings(seed);
+        ClearPrediction();
+    }
+
+    private void ClearPrediction()
+    {
+        Results = [];
+        ErrorMessage = null;
+    }
 
     private void RefreshGrowthRates()
     {
@@ -68,6 +121,7 @@ public sealed class MainViewModel
                 CultureInfo.InvariantCulture, out uint seed))
             return Fail("成長seedを8桁の16進数で入力してください（例：1234ABCD）。");
 
+        SaveSettings(seed);
         if (!int.TryParse(LevelUpCount, NumberStyles.None, CultureInfo.InvariantCulture, out int count)
             || count is < 1 or > 10_000)
             return Fail("レベルアップ回数は1～10000の整数で入力してください。");

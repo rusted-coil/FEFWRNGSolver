@@ -1,6 +1,8 @@
 @using FEFWRNGSolver.Presentation
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@inject IJSRuntime JavaScript
 @implements IDisposable
 
 <PageTitle>@m_ViewModel.Title</PageTitle>
@@ -10,13 +12,17 @@
         <GrowthSettings Model="m_ViewModel" SettingsChanged="m_Search.InputsChanged" />
     </div>
 </fieldset>
+@if (m_Store.ErrorMessage is not null)
+{
+    <p role="alert">@m_Store.ErrorMessage</p>
+}
 <div class="tool-tabs" role="tablist" aria-label="ツール" @onkeydown="OnTabKeyDown">
-    <button type="button" role="tab" id="prediction-tab" aria-controls="prediction-panel"
-            aria-selected="@(m_ShowPrediction ? "true" : "false")" tabindex="@(m_ShowPrediction ? 0 : -1)"
-            @ref="m_PredictionTab" @onclick="() => m_ShowPrediction = true">レベルアップ予測</button>
     <button type="button" role="tab" id="seed-tab" aria-controls="seed-panel"
             aria-selected="@(m_ShowPrediction ? "false" : "true")" tabindex="@(m_ShowPrediction ? -1 : 0)"
             @ref="m_SeedTab" @onclick="() => m_ShowPrediction = false">成長seed特定</button>
+    <button type="button" role="tab" id="prediction-tab" aria-controls="prediction-panel"
+            aria-selected="@(m_ShowPrediction ? "true" : "false")" tabindex="@(m_ShowPrediction ? 0 : -1)"
+            @ref="m_PredictionTab" @onclick="() => m_ShowPrediction = true">レベルアップ予測</button>
 </div>
 <section id="prediction-panel" role="tabpanel" aria-labelledby="prediction-tab" hidden="@(!m_ShowPrediction)">
     <h1>レベルアップ計算</h1>
@@ -60,14 +66,14 @@
                 else
                 {
                     <Virtualize TItem="LevelUpRow" ItemsProvider="GetRows" Context="row" ItemSize="40" SpacerElement="tr">
-                        <tr>
+                        <tr @key="row.Number">
                             <td>@row.Number</td>
-                            <td class="seed">@row.GrowthSeed</td>
+                            <SeedCell Seed="@row.GrowthSeed" SeedAdopted="AdoptSeed" />
                             @foreach (var gain in row.StatGains)
                             {
                                 <td class="@(gain > 0 ? "gain" : null)">@gain.ToString("+0;−0;0")</td>
                             }
-                            <td class="seed">@row.NextGrowthSeed</td>
+                            <SeedCell Seed="@row.NextGrowthSeed" SeedAdopted="AdoptSeed" />
                         </tr>
                     </Virtualize>
                 }
@@ -76,22 +82,39 @@
     </div>
 </section>
 <section id="seed-panel" role="tabpanel" aria-labelledby="seed-tab" hidden="@m_ShowPrediction">
-    <SeedSearchView Model="m_Search" />
+    <SeedSearchView Model="m_Search" SeedAdopted="AdoptSeed" />
 </section>
 
 @code {
-    private readonly SeedSearchViewModel m_Search = new();
+    private BrowserUnitSettingsStore m_Store = null!;
+    private SeedSearchViewModel m_Search = null!;
     private MainViewModel m_ViewModel => m_Search.Settings;
-    private bool m_ShowPrediction = true;
+    private bool m_ShowPrediction;
     private ElementReference m_PredictionTab;
     private ElementReference m_SeedTab;
 
-    protected override void OnInitialized() => m_Search.Changed += Refresh;
+    protected override void OnInitialized()
+    {
+        m_Store = new((IJSInProcessRuntime)JavaScript);
+        m_Search = new(m_Store);
+        m_Search.Changed += Refresh;
+        m_ViewModel.UnitSelected += OnUnitSelected;
+    }
+
+    private void OnUnitSelected() => m_ShowPrediction = m_ViewModel.GrowthSeed.Length > 0;
+
+    private async Task AdoptSeed(uint seed)
+    {
+        m_ViewModel.AdoptGrowthSeed(seed);
+        m_ShowPrediction = true;
+        await m_PredictionTab.FocusAsync();
+    }
 
     private void Refresh() => _ = InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
+        m_ViewModel.UnitSelected -= OnUnitSelected;
         m_Search.Changed -= Refresh;
         m_Search.Cancel();
     }
@@ -105,10 +128,10 @@
                 m_ShowPrediction = !m_ShowPrediction;
                 break;
             case "Home":
-                m_ShowPrediction = true;
+                m_ShowPrediction = false;
                 break;
             case "End":
-                m_ShowPrediction = false;
+                m_ShowPrediction = true;
                 break;
             default:
                 return;

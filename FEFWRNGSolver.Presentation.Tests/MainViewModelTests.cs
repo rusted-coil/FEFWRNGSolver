@@ -21,6 +21,7 @@ public sealed class MainViewModelTests
         var model = CreateModel("123");
         var setup = model.Setup;
         setup.UnitId = "PID_ムウ";
+        model.GrowthSeed = "075bcd15";
         setup.ClassId = "JID_戦車兵";
         setup.AnimalId = "汗血馬";
         Assert.AreEqual(5, setup.Affection);

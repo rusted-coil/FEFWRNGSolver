@@ -1,0 +1,50 @@
+@using Microsoft.AspNetCore.Components.Web
+
+<td class="seed" tabindex="0" aria-haspopup="menu" @oncontextmenu:preventDefault @oncontextmenu="OpenMenu">
+    @Seed
+    @if (m_MenuPosition is not null)
+    {
+        <div class="seed-menu" role="menu" aria-label="成長seedの操作" style="@m_MenuPosition">
+            <button type="button" role="menuitem" @ref="m_MenuItem" @onblur="CloseMenu"
+                    @onkeydown="OnMenuKeyDown" @onclick="AdoptSeed">成長seedとして採用</button>
+        </div>
+    }
+</td>
+
+@code {
+    [Parameter, EditorRequired] public string Seed { get; set; } = "";
+    [Parameter, EditorRequired] public EventCallback<uint> SeedAdopted { get; set; }
+
+    private string? m_MenuPosition;
+    private bool m_FocusMenu;
+    private ElementReference m_MenuItem;
+
+    private void OpenMenu(MouseEventArgs args)
+    {
+        m_MenuPosition = FormattableString.Invariant($"--menu-x:{args.ClientX}px; --menu-y:{args.ClientY}px");
+        m_FocusMenu = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (m_FocusMenu && m_MenuPosition is not null)
+        {
+            m_FocusMenu = false;
+            await m_MenuItem.FocusAsync(preventScroll: true);
+        }
+    }
+
+    private void CloseMenu() => m_MenuPosition = null;
+
+    private void OnMenuKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+            CloseMenu();
+    }
+
+    private Task AdoptSeed()
+    {
+        CloseMenu();
+        return SeedAdopted.InvokeAsync(Convert.ToUInt32(Seed, 16));
+    }
+}

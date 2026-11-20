@@ -59,7 +59,6 @@ internal sealed class GrowthSettingsPanel : GroupBox
         var skill = AddSelector(panel, 4, "スキル補正", 22);
         skill.DisplayMember = nameof(SkillBonusOption.Name);
         skill.Items.AddRange(MainViewModel.SkillBonusOptions.ToArray());
-        skill.SelectedItem = MainViewModel.SkillBonusOptions.First(option => option.Value == m_ViewModel.SelectedSkillBonus);
         SetOptions(unit, setup.Units, setup.UnitId);
         affection.Items.AddRange(GrowthSetupViewModel.AffectionLevels.Cast<object>().ToArray());
 
@@ -71,6 +70,7 @@ internal sealed class GrowthSettingsPanel : GroupBox
             animal.Enabled = !setup.IsManual && setup.Animals.Count > 1;
             affection.Enabled = setup.HasAnimal;
             affection.SelectedItem = setup.Affection;
+            skill.SelectedItem = MainViewModel.SkillBonusOptions.First(option => option.Value == m_ViewModel.SelectedSkillBonus);
             RefreshRates();
         }
 

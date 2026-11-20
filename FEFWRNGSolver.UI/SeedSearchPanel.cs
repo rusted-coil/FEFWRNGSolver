@@ -8,6 +8,7 @@ internal sealed class SeedSearchPanel : UserControl
     private readonly GrowthSettingsPanel m_Settings;
     private readonly DataGridView m_Observations = CreateGrid("レベルアップごとの観測結果");
     private readonly DataGridView m_Results = CreateGrid("成長seedの候補");
+    private readonly SeedCellMenu m_SeedMenu;
     private readonly Button m_Add = new() { AutoSize = true, Text = "観測を追加" };
     private readonly Button m_Remove = new() { AutoSize = true, Text = "選択行を削除" };
     private readonly Button m_Search = new() { AutoSize = true, Text = "計算" };
@@ -18,6 +19,8 @@ internal sealed class SeedSearchPanel : UserControl
         AccessibleName = "探索の進捗", Dock = DockStyle.Top, Maximum = 1000, Visible = false
     };
     private (int Low, int High)[] m_Options = [];
+
+    public event Action<uint>? SeedAdopted;
 
     public SeedSearchPanel(SeedSearchViewModel viewModel, GrowthSettingsPanel settings)
     {
@@ -82,6 +85,8 @@ internal sealed class SeedSearchPanel : UserControl
         m_Results.ReadOnly = true;
         m_Results.Columns.Add(TextColumn("最初の観測直前の成長seed"));
         m_Results.Columns.Add(TextColumn("最後の観測後の次の成長seed"));
+        m_Results.DefaultCellStyle.Format = "X8";
+        m_SeedMenu = new SeedCellMenu(m_Results, seed => SeedAdopted?.Invoke(seed));
         layout.Controls.Add(m_Results, 0, 6);
 
         m_Settings.Changed += () =>
@@ -186,7 +191,11 @@ internal sealed class SeedSearchPanel : UserControl
         if (m_Results.RowCount > matches.Count)
             m_Results.Rows.Clear();
         for (int i = m_Results.RowCount; i < matches.Count; i++)
-            m_Results.Rows.Add(matches[i].InitialSeed.ToString("X8"), matches[i].NextSeed.ToString("X8"));
+        {
+            int row = m_Results.Rows.Add(matches[i].InitialSeed, matches[i].NextSeed);
+            foreach (DataGridViewCell cell in m_Results.Rows[row].Cells)
+                cell.ContextMenuStrip = m_SeedMenu;
+        }
     }
 
     protected override void Dispose(bool disposing)
@@ -195,6 +204,7 @@ internal sealed class SeedSearchPanel : UserControl
         {
             m_ViewModel.Changed -= RefreshState;
             m_ViewModel.Cancel();
+            m_SeedMenu.Dispose();
         }
         base.Dispose(disposing);
     }

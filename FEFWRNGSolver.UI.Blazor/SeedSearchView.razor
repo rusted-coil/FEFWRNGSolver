@@ -88,7 +88,10 @@
                 <tbody>
                     @foreach (var match in Model.Matches)
                     {
-                        <tr><td class="seed">@match.InitialSeed.ToString("X8")</td><td class="seed">@match.NextSeed.ToString("X8")</td></tr>
+                        <tr @key="match.InitialSeed">
+                            <SeedCell Seed="@(match.InitialSeed.ToString("X8"))" SeedAdopted="SeedAdopted" />
+                            <SeedCell Seed="@(match.NextSeed.ToString("X8"))" SeedAdopted="SeedAdopted" />
+                        </tr>
                     }
                 </tbody>
             </table>
@@ -98,6 +101,7 @@
 
 @code {
     [Parameter, EditorRequired] public SeedSearchViewModel Model { get; set; } = null!;
+    [Parameter] public EventCallback<uint> SeedAdopted { get; set; }
 
     private string SearchStatus => Model.IsRunning
         ? Model.WorkerCount > 0 ? $"探索中（並列数 {Model.WorkerCount}）" : "探索準備中"

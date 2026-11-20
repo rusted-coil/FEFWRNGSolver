@@ -23,6 +23,14 @@ dnx dotnet-serve --yes -- -d ./artifacts/release/web -a 127.0.0.1 -p 8571
 
 ブラウザで `http://127.0.0.1:8571/` を開きます。サーバーは `Ctrl+C` で終了します。
 
+## 配布物のライセンス
+
+Windows版のZIPには、本ツールの [LICENSE](../LICENSE) を入れます。`licenses/` には、ビルドに使ったバージョンの .NET ランタイムと Windows Forms のMITライセンス全文（著作権表示を含む）、それぞれの第三者通知、Microsoft .NET Library License の全文を収録します。v1.0.0 のランタイムは 10.0.13 です。[.NET のバイナリ配布方針](https://github.com/dotnet/runtime/blob/main/docs/project/licensing-assets.md)・[ランタイムの第三者通知](https://github.com/dotnet/runtime/blob/v10.0.13/THIRD-PARTY-NOTICES.TXT)・[Windows Forms の第三者通知](https://github.com/dotnet/winforms/blob/v10.0.13/THIRD-PARTY-NOTICES.TXT)
+
+Windows単一exeに組み込まれるランタイムには Microsoft .NET Library License が適用されます。第3条(a)(ii)に従い、同梱ランタイムについて、再配布者と外部エンドユーザーに同契約と同等以上の保護を与える条件への同意を求めます。配布ページからも利用前にその条件を読めるようにします。[Windows版 .NET のライセンス案内](https://github.com/dotnet/core/blob/main/license-information-windows.md)・[Microsoft .NET Library License 全文](https://dotnet.microsoft.com/dotnet_library_license.htm)
+
+Web版もブラウザーにコードを配信します。本ツールの LICENSE と、配信する WebAssembly ランタイムおよび Blazor などの依存パッケージのライセンス・第三者通知を、使用バージョンに合わせて公開します。[Blazor を含む ASP.NET Core の第三者通知（10.0.13）](https://github.com/dotnet/aspnetcore/blob/v10.0.13/THIRD-PARTY-NOTICES.txt)
+
 ## GitHub Pages に公開する
 
 fork先で初めて公開するときは、fork先の **Actions** タブでワークフローを有効にし、**Settings → Pages → Build and deployment → Source** で **GitHub Actions** を選びます。

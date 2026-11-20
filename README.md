@@ -22,6 +22,12 @@ To change the display language, go to **Settings → Language**.
 
 To add a language, copy `en/` or `jp/` in the [language data directory][languages] to a folder named after the new language code. Translate the display text in the JSON files, register the language in [languages.json][language-list], and submit a pull request. The [translation guide (in Japanese)][translation] includes a registration example and explains how to check your translation in the app.
 
+## License / ライセンス
+
+本ツール独自のコードは [MITライセンス](LICENSE) で提供します。同梱する .NET などの第三者コンポーネントには、それぞれのライセンスが適用されます。
+
+The original code of this tool is available under the [MIT License](LICENSE). Bundled third-party components, including .NET, are subject to their respective licenses.
+
 ## Acknowledgments / 謝辞
 
 『ファイアーエムブレム 万紫千紅』の乱数生成とレベルアップ時の成長判定を調べるにあたり、

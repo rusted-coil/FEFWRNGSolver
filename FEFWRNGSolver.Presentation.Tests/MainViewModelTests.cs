@@ -1,3 +1,4 @@
+using FEFWRNGSolver.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace FEFWRNGSolver.Presentation.Tests;
@@ -25,7 +26,7 @@ public sealed class MainViewModelTests
         setup.ClassId = "JID_戦車兵";
         setup.AnimalId = "汗血馬";
         Assert.AreEqual(5, setup.Affection);
-        model.SelectedSkillBonus = MainViewModel.SkillBonusOptions[1].Value;
+        model.SelectedSkillBonus = GrowthSkillBonus.CharioteersPath35;
 
         short[] expected = [80, 70, 25, 50, 80, 80, 30, 35, 55];
         CollectionAssert.AreEqual(expected.Select(rate => rate.ToString()).ToArray(),
@@ -44,8 +45,8 @@ public sealed class MainViewModelTests
         setup.UnitId = "";
         Assert.IsTrue(setup.IsManual);
         Assert.IsFalse(setup.HasAnimal);
-        Assert.AreEqual("133", model.GrowthRates[0].Rate);
-        model.SelectedSkillBonus = MainViewModel.SkillBonusOptions[0].Value;
+        Assert.AreEqual(GrowthSkillBonus.None, model.SkillOptions.Single().Value);
+        Assert.AreEqual(GrowthSkillBonus.None, model.SelectedSkillBonus);
         Assert.AreEqual("123", model.GrowthRates[0].Rate);
     }
 
@@ -72,28 +73,30 @@ public sealed class MainViewModelTests
     }
 
     [TestMethod]
-    public void SelectedSkillMatchesManualRatesInDisplayOrder()
+    public void LimitsSkillOptionsToTheCurrentClassAndClearsIncompatibleBonuses()
     {
-        var model = CreateModel("90", "85", "95", "95", "90", "80", "95", "0", "90");
-        CollectionAssert.AreEqual(new[] { "スキル補正無し", "戦車兵の道（Lv35）", "戦車兵の道（Lv45）", "戦象兵の道（Lv45）" },
-            MainViewModel.SkillBonusOptions.Select(option => option.Name).ToArray());
-        model.SelectedSkillBonus = MainViewModel.SkillBonusOptions[2].Value;
-        CollectionAssert.AreEqual(new[] { "100", "100", "100", "100", "100", "100", "100", "5", "100" },
-            model.GrowthRates.Select(stat => stat.Rate).ToArray());
-        model.GrowthRates[7].Rate = "0";
-        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
-        CollectionAssert.AreEqual(new[] { 1, 1, 1, 1, 1, 1, 1, 0, 1 }, model.Results[0].StatGains.ToArray());
+        var model = new MainViewModel();
+        model.Setup.UnitId = "PID_ムウ";
+        model.Setup.ClassId = "JID_戦車兵";
+        CollectionAssert.AreEqual(new[] { "スキル補正無し", "戦車兵の道（Lv35）", "戦車兵の道（Lv45）" },
+            model.SkillOptions.Select(option => option.Name).ToArray());
+        model.SelectedSkillBonus = GrowthSkillBonus.CharioteersPath45;
+        Assert.AreEqual("70", model.GrowthRates[0].Rate);
 
-        model.GrowthRates[0].Rate = "32767";
-        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
-        model.SelectedSkillBonus = MainViewModel.SkillBonusOptions[0].Value;
-        Assert.AreEqual("0", model.GrowthRates[7].Rate);
-        model.SelectedSkillBonus = MainViewModel.SkillBonusOptions[2].Value;
-        Assert.AreEqual("0", model.GrowthRates[7].Rate);
-        model.GrowthRates[0].Rate = "32768";
-        Assert.IsFalse(model.Calculate());
-        Assert.IsNotNull(model.ErrorMessage);
-        Assert.AreEqual(1, model.Results.Count);
+        model.Setup.ClassId = "JID_戦象兵";
+        CollectionAssert.AreEqual(new[] { "スキル補正無し", "戦象兵の道（Lv45）" },
+            model.SkillOptions.Select(option => option.Name).ToArray());
+        Assert.AreEqual(GrowthSkillBonus.None, model.SelectedSkillBonus);
+        Assert.AreEqual("70", model.GrowthRates[0].Rate);
+        model.SelectedSkillBonus = GrowthSkillBonus.ElephantRidersPath45;
+        Assert.AreEqual("80", model.GrowthRates[0].Rate);
+
+        model.Setup.ClassId = "JID_軽騎兵";
+        Assert.AreEqual(GrowthSkillBonus.None, model.SkillOptions.Single().Value);
+        Assert.AreEqual(GrowthSkillBonus.None, model.SelectedSkillBonus);
+        model.SelectedSkillBonus = GrowthSkillBonus.ElephantRidersPath45;
+        Assert.AreEqual(GrowthSkillBonus.None, model.SelectedSkillBonus);
+        Assert.AreEqual("60", model.GrowthRates[0].Rate);
     }
 
     [TestMethod]

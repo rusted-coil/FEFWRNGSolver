@@ -40,14 +40,23 @@ public sealed class MainViewModel
         get => m_SelectedSkillBonus;
         set
         {
-            if (m_SelectedSkillBonus == value)
+            if (m_SelectedSkillBonus == value || !IsSkillAvailable(value))
                 return;
             m_SelectedSkillBonus = value;
             OnSettingsChanged();
         }
     }
-    public IReadOnlyList<SkillBonusOption> SkillOptions => GetSkillOptions(m_Text);
+    public IReadOnlyList<SkillBonusOption> SkillOptions =>
+        [.. GetSkillOptions(m_Text).Where(option => IsSkillAvailable(option.Value))];
     public static IReadOnlyList<SkillBonusOption> SkillBonusOptions => GetSkillOptions(LocalizationCatalog.Default);
+
+    private bool IsSkillAvailable(GrowthSkillBonus skill) => skill switch
+    {
+        GrowthSkillBonus.None => true,
+        GrowthSkillBonus.CharioteersPath35 or GrowthSkillBonus.CharioteersPath45 => Setup.ClassId == "JID_戦車兵",
+        GrowthSkillBonus.ElephantRidersPath45 => Setup.ClassId == "JID_戦象兵",
+        _ => false
+    };
 
     private static SkillBonusOption[] GetSkillOptions(LocalizationCatalog text) =>
     [
@@ -89,9 +98,7 @@ public sealed class MainViewModel
     {
         var settings = Setup.IsManual ? null : m_Store.Load(Setup.UnitId);
         Setup.RestoreSelection(settings);
-        if (!Setup.IsManual)
-            m_SelectedSkillBonus = settings is not null && Enum.IsDefined(settings.SkillBonus)
-                ? settings.SkillBonus : GrowthSkillBonus.None;
+        m_SelectedSkillBonus = settings?.SkillBonus ?? GrowthSkillBonus.None;
         GrowthSeed = settings?.GrowthSeed?.ToString("X8") ?? "";
         RefreshGrowthRates();
         ClearPrediction();
@@ -129,13 +136,11 @@ public sealed class MainViewModel
 
     private void RefreshGrowthRates()
     {
+        if (!IsSkillAvailable(m_SelectedSkillBonus))
+            m_SelectedSkillBonus = GrowthSkillBonus.None;
         var selectedRates = SelectedGrowthRates;
-        var skill = EffectiveGrowthRates.GetSkillModifiers(SelectedSkillBonus);
         for (int i = 0; i < GrowthRates.Count; i++)
-        {
-            var input = GrowthRates[i];
-            input.ApplySetup(Setup.IsManual ? null : selectedRates[i], skill[input.InternalIndex]);
-        }
+            GrowthRates[i].ApplySetup(Setup.IsManual ? null : selectedRates[i]);
     }
 
     public bool Calculate()
@@ -230,8 +235,6 @@ public sealed class GrowthRateInput
     private readonly LocalizationCatalog m_Text;
     private string? m_UnitRate;
     private string m_ManualRate = "0";
-    private short m_SkillBonusAtInput;
-    private short m_SkillBonus;
 
     internal GrowthRateInput(LocalizationCatalog text, string nameKey, int internalIndex) =>
         (m_Text, NameKey, InternalIndex) = (text, nameKey, internalIndex);
@@ -241,34 +244,19 @@ public sealed class GrowthRateInput
     public StatGrowthCondition Condition { get; set; } = StatGrowthCondition.Any;
     public string Rate
     {
-        get
-        {
-            if (m_UnitRate is not null)
-                return m_UnitRate;
-            // 入力時の補正との差を使い、スキルを往復しても丸め前の値を復元する。
-            if (m_SkillBonus != m_SkillBonusAtInput &&
-                short.TryParse(m_ManualRate, NumberStyles.None, CultureInfo.InvariantCulture, out short rate))
-                return Math.Max(0, rate + m_SkillBonus - m_SkillBonusAtInput).ToString(CultureInfo.InvariantCulture);
-            return m_ManualRate;
-        }
+        get => m_UnitRate ?? m_ManualRate;
         set
         {
             if (m_UnitRate is not null)
                 m_UnitRate = value;
             else
-            {
                 m_ManualRate = value;
-                m_SkillBonusAtInput = m_SkillBonus;
-            }
         }
     }
     internal int InternalIndex { get; }
 
-    internal void ApplySetup(short? unitRate, short skillBonus)
-    {
+    internal void ApplySetup(short? unitRate) =>
         m_UnitRate = unitRate?.ToString(CultureInfo.InvariantCulture);
-        m_SkillBonus = skillBonus;
-    }
 }
 
 public sealed record LevelUpRow(int Number, string GrowthSeed, ImmutableArray<int> StatGains, string NextGrowthSeed);

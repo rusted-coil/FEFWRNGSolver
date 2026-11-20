@@ -15,14 +15,14 @@ public sealed class UnitSettingsTests
         var store = new JsonStore();
         var model = new SeedSearchViewModel(store).Settings;
         model.Setup.UnitId = Female;
-        model.Setup.ClassId = "JID_天翼兵";
+        model.Setup.ClassId = "JID_戦車兵";
         Assert.AreEqual(model.Setup.ClassId, store.Load(Female)!.ClassId);
-        model.Setup.AnimalId = "野生のペガサス";
+        model.Setup.AnimalId = "野生の馬";
         Assert.AreEqual(model.Setup.AnimalId, store.Load(Female)!.AnimalId);
         model.Setup.Affection = 2;
         Assert.AreEqual(2, store.Load(Female)!.Affection);
         model.SelectedSkillBonus = GrowthSkillBonus.CharioteersPath35;
-        Assert.AreEqual(model.SelectedSkillBonus, store.Load(Female)!.SkillBonus);
+        Assert.AreEqual(GrowthSkillBonus.CharioteersPath35, store.Load(Female)!.SkillBonus);
         Assert.IsNull(store.Load(Female)!.GrowthSeed);
 
         model.AdoptGrowthSeed(0);
@@ -39,12 +39,26 @@ public sealed class UnitSettingsTests
         reopened.UnitSelected += () => seedAtSelection = reopened.GrowthSeed;
         reopened.Setup.UnitId = Female;
         Assert.AreEqual("00000000", seedAtSelection);
-        Assert.AreEqual("JID_天翼兵", reopened.Setup.ClassId);
-        Assert.AreEqual("野生のペガサス", reopened.Setup.AnimalId);
+        Assert.AreEqual("JID_戦車兵", reopened.Setup.ClassId);
+        Assert.AreEqual("野生の馬", reopened.Setup.AnimalId);
         Assert.AreEqual(2, reopened.Setup.Affection);
         Assert.AreEqual(GrowthSkillBonus.CharioteersPath35, reopened.SelectedSkillBonus);
+        reopened.Setup.ClassId = "JID_兵士";
+        Assert.AreEqual(GrowthSkillBonus.None, store.Load(Female)!.SkillBonus);
         reopened.Setup.UnitId = Male;
         Assert.AreEqual("DEADBEEF", seedAtSelection);
+    }
+
+    [TestMethod]
+    public void IgnoresSavedSkillFromAnIncompatibleClass()
+    {
+        var store = new JsonStore();
+        store.Save(Female, new("JID_戦車兵", "", 5, GrowthSkillBonus.ElephantRidersPath45, 0xA));
+        var model = new MainViewModel(store);
+        model.Setup.UnitId = Female;
+        Assert.AreEqual("JID_戦車兵", model.Setup.ClassId);
+        Assert.AreEqual(GrowthSkillBonus.None, model.SelectedSkillBonus);
+        Assert.AreEqual("0000000A", model.GrowthSeed);
     }
 
     [TestMethod]

@@ -66,8 +66,6 @@ internal sealed class GrowthSettingsPanel : GroupBox
         m_Text.Bind(() =>
         {
             SetOptions(unit, setup.Units, setup.UnitId);
-            skill.Items.Clear();
-            skill.Items.AddRange(m_ViewModel.SkillOptions.ToArray());
             RefreshSelections();
         });
 
@@ -79,7 +77,11 @@ internal sealed class GrowthSettingsPanel : GroupBox
             animal.Enabled = !setup.IsManual && setup.Animals.Count > 1;
             affection.Enabled = setup.HasAnimal;
             affection.SelectedItem = setup.Affection;
-            skill.SelectedItem = m_ViewModel.SkillOptions.First(option => option.Value == m_ViewModel.SelectedSkillBonus);
+            var skillOptions = m_ViewModel.SkillOptions;
+            skill.Items.Clear();
+            skill.Items.AddRange(skillOptions.ToArray());
+            skill.SelectedItem = skillOptions.First(option => option.Value == m_ViewModel.SelectedSkillBonus);
+            skill.Enabled = skillOptions.Count > 1;
         }
 
         // 候補の差し替えでは発火しないイベントを使い、利用者の変更だけを反映する。

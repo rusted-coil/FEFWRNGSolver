@@ -59,14 +59,13 @@ public sealed class SeedSearchViewModelTests
     }
 
     [TestMethod]
-    public async Task ValidatesEmptyObservationsAndSkillAdjustedManualRates()
+    public async Task ValidatesEmptyObservationsAndEditedGrowthRates()
     {
         var model = new SeedSearchViewModel();
         model.RemoveObservation(0);
         await model.SearchAsync();
         Assert.IsNotNull(model.ErrorMessage);
         model.AddObservation();
-        model.Settings.SelectedSkillBonus = MainViewModel.SkillBonusOptions[1].Value;
         model.Settings.GrowthRates[0].Rate = "100";
         Assert.AreEqual((1, 1), model.GetGainOptions()[0]);
         model.Settings.Setup.UnitId = "PID_ムウ";

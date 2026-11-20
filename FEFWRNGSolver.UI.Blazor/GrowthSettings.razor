@@ -1,7 +1,10 @@
 @using FEFWRNGSolver.Presentation
 @using Microsoft.AspNetCore.Components.Web
 
-@{ var setup = Model.Setup; }
+@{
+    var setup = Model.Setup;
+    var skillOptions = Model.SkillOptions;
+}
 <div class="unit-selectors">
     <label>@Text["SYS_UNIT"]
         <select @key="Text.Code" @bind="setup.UnitId" @bind:after="NotifyChanged">
@@ -36,8 +39,8 @@
         </select>
     </label>
     <label>@Text["SYS_SKILL_BONUS"]
-        <select @bind="Model.SelectedSkillBonus" @bind:after="NotifyChanged">
-            @foreach (var option in Model.SkillOptions)
+        <select @key="setup.ClassId" @bind="Model.SelectedSkillBonus" @bind:after="NotifyChanged" disabled="@(skillOptions.Count <= 1)">
+            @foreach (var option in skillOptions)
             {
                 <option value="@option.Value">@option.Name</option>
             }

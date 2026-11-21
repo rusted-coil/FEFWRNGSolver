@@ -5,25 +5,25 @@
 @inject IJSRuntime JavaScript
 @implements IDisposable
 
-<fieldset class="unit-panel" disabled="@m_Search.IsRunning">
+<fieldset class="unit-panel" disabled="@m_Search.IsRunning" hidden="@(m_SelectedTab == ToolTab.MapRandom)">
     <legend>@Text["SYS_UNIT"]</legend>
     <div class="unit-fields">
         <GrowthSettings Model="m_ViewModel" SettingsChanged="m_Search.InputsChanged" />
     </div>
 </fieldset>
-@if (m_Store.ErrorMessage is not null)
+@if (m_SelectedTab != ToolTab.MapRandom && m_Store.ErrorMessage is not null)
 {
     <p role="alert">@m_Store.ErrorMessage</p>
 }
 <div class="tool-tabs" role="tablist" aria-label="@Text["SYS_TOOLS"]" @onkeydown="OnTabKeyDown">
-    <button type="button" role="tab" id="seed-tab" aria-controls="seed-panel"
-            aria-selected="@(m_ShowPrediction ? "false" : "true")" tabindex="@(m_ShowPrediction ? -1 : 0)"
-            @ref="m_SeedTab" @onclick="() => m_ShowPrediction = false">@Text["SYS_SEARCH_TAB"]</button>
-    <button type="button" role="tab" id="prediction-tab" aria-controls="prediction-panel"
-            aria-selected="@(m_ShowPrediction ? "true" : "false")" tabindex="@(m_ShowPrediction ? 0 : -1)"
-            @ref="m_PredictionTab" @onclick="() => m_ShowPrediction = true">@Text["SYS_PREDICTION_TAB"]</button>
+    @foreach (var (tab, id, title) in m_Tabs)
+    {
+        <button type="button" role="tab" id="@(id + "-tab")" aria-controls="@(id + "-panel")"
+                aria-selected="@(m_SelectedTab == tab ? "true" : "false")" tabindex="@(m_SelectedTab == tab ? 0 : -1)"
+                @ref="m_TabButtons[(int)tab]" @onclick="() => m_SelectedTab = tab">@Text[title]</button>
+    }
 </div>
-<section id="prediction-panel" role="tabpanel" aria-labelledby="prediction-tab" hidden="@(!m_ShowPrediction)">
+<section id="prediction-panel" role="tabpanel" aria-labelledby="prediction-tab" hidden="@(m_SelectedTab != ToolTab.Prediction)">
     <h2>@Text["SYS_PREDICTION_TAB"]</h2>
     <form @onsubmit="Calculate" @onsubmit:preventDefault>
         <div class="prediction-settings">
@@ -103,8 +103,11 @@
         </table>
     </div>
 </section>
-<section id="seed-panel" role="tabpanel" aria-labelledby="seed-tab" hidden="@m_ShowPrediction">
+<section id="seed-panel" role="tabpanel" aria-labelledby="seed-tab" hidden="@(m_SelectedTab != ToolTab.Search)">
     <SeedSearchView Model="m_Search" SeedAdopted="AdoptSeed" />
+</section>
+<section id="map-random-panel" role="tabpanel" aria-labelledby="map-random-tab" hidden="@(m_SelectedTab != ToolTab.MapRandom)">
+    <MapRandomView />
 </section>
 
 @code {
@@ -112,9 +115,15 @@
     private BrowserUnitSettingsStore m_Store = null!;
     private SeedSearchViewModel m_Search = null!;
     private MainViewModel m_ViewModel => m_Search.Settings;
-    private bool m_ShowPrediction;
-    private ElementReference m_PredictionTab;
-    private ElementReference m_SeedTab;
+    private enum ToolTab { Search, Prediction, MapRandom }
+    private static readonly (ToolTab Tab, string Id, string Title)[] m_Tabs =
+    [
+        (ToolTab.Search, "seed", "SYS_SEARCH_TAB"),
+        (ToolTab.Prediction, "prediction", "SYS_PREDICTION_TAB"),
+        (ToolTab.MapRandom, "map-random", "SYS_MAP_RNG_TAB")
+    ];
+    private readonly ElementReference[] m_TabButtons = new ElementReference[m_Tabs.Length];
+    private ToolTab m_SelectedTab;
 
     protected override void OnInitialized()
     {
@@ -124,13 +133,13 @@
         m_ViewModel.UnitSelected += OnUnitSelected;
     }
 
-    private void OnUnitSelected() => m_ShowPrediction = m_ViewModel.GrowthSeed.Length > 0;
+    private void OnUnitSelected() => m_SelectedTab = m_ViewModel.GrowthSeed.Length > 0 ? ToolTab.Prediction : ToolTab.Search;
 
     private async Task AdoptSeed(uint seed)
     {
         m_ViewModel.AdoptGrowthSeed(seed);
-        m_ShowPrediction = true;
-        await m_PredictionTab.FocusAsync();
+        m_SelectedTab = ToolTab.Prediction;
+        await m_TabButtons[(int)m_SelectedTab].FocusAsync();
     }
 
     private void Refresh() => _ = InvokeAsync(StateHasChanged);
@@ -147,20 +156,22 @@
         switch (args.Key)
         {
             case "ArrowLeft":
+                m_SelectedTab = (ToolTab)(((int)m_SelectedTab + m_Tabs.Length - 1) % m_Tabs.Length);
+                break;
             case "ArrowRight":
-                m_ShowPrediction = !m_ShowPrediction;
+                m_SelectedTab = (ToolTab)(((int)m_SelectedTab + 1) % m_Tabs.Length);
                 break;
             case "Home":
-                m_ShowPrediction = false;
+                m_SelectedTab = ToolTab.Search;
                 break;
             case "End":
-                m_ShowPrediction = true;
+                m_SelectedTab = ToolTab.MapRandom;
                 break;
             default:
                 return;
         }
 
-        await (m_ShowPrediction ? m_PredictionTab : m_SeedTab).FocusAsync();
+        await m_TabButtons[(int)m_SelectedTab].FocusAsync();
     }
 
     private void Calculate() => m_ViewModel.Calculate();

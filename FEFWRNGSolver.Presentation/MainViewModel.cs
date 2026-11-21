@@ -16,7 +16,7 @@ public sealed class MainViewModel
 
     public string Title => m_Text["SYS_APP_TITLE"];
     public string GrowthSeed { get; set; } = "";
-    public string MaxAdvances { get; set; } = "100";
+    public string MaxAdvances { get; set; } = RngAdvanceInput.DefaultMaximum;
     public int MinGrowthCount { get; set; }
     public int MaxGrowthCount { get; set; } = 9;
     public IReadOnlyList<GrowthConditionOption> GrowthConditionOptions =>
@@ -175,8 +175,7 @@ public sealed class MainViewModel
             return Fail(new("SYS_INVALID_GROWTH_SEED"));
 
         SaveSettings(seed);
-        if (!int.TryParse(MaxAdvances, NumberStyles.None, CultureInfo.InvariantCulture, out int maxAdvances)
-            || maxAdvances is < 0 or > 10_000)
+        if (!RngAdvanceInput.TryParseMaximum(MaxAdvances, out int maxAdvances))
             return Fail(new("SYS_INVALID_MAX_RNG_ADVANCES"));
 
         if (MinGrowthCount < 0 || MaxGrowthCount > GrowthRates.Count || MinGrowthCount > MaxGrowthCount)

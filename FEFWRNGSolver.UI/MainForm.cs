@@ -7,7 +7,9 @@ public sealed partial class MainForm : Form
     private readonly WindowText m_Text;
     private readonly MainViewModel m_ViewModel;
     private readonly Label m_Error = new() { AutoSize = true, ForeColor = SystemColors.WindowText };
-    private readonly DataGridView m_Results = new()
+    private readonly DataGridView m_Results = CreateResultsGrid();
+
+    private static DataGridView CreateResultsGrid() => new()
     {
         Dock = DockStyle.Fill,
         ReadOnly = true,
@@ -41,12 +43,16 @@ public sealed partial class MainForm : Form
         var tabs = new TabControl { Dock = DockStyle.Fill, Padding = new Point(20, 8), TabIndex = 1 };
         var prediction = new TabPage { AutoScrollMinSize = new Size(0, 440) };
         var search = new TabPage();
+        var mapRandom = new TabPage();
         m_Text.Bind(() => prediction.Text = catalog["SYS_PREDICTION_TAB"]);
         m_Text.Bind(() => search.Text = catalog["SYS_SEARCH_TAB"]);
+        m_Text.Bind(() => mapRandom.Text = catalog["SYS_MAP_RNG_TAB"]);
         var searchPanel = new SeedSearchPanel(searchModel, settings, m_Text) { Dock = DockStyle.Fill };
         search.Controls.Add(searchPanel);
         tabs.TabPages.Add(search);
         tabs.TabPages.Add(prediction);
+        tabs.TabPages.Add(mapRandom);
+        var mapCalculate = BuildMapRandomPage(mapRandom);
         var content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
         content.Controls.Add(tabs);
         content.Controls.Add(settings);
@@ -54,16 +60,11 @@ public sealed partial class MainForm : Form
         MainMenuStrip = CreateMenu(catalog, saveLanguage);
         Controls.Add(MainMenuStrip);
 
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(12) };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        for (int i = 0; i < layout.RowCount - 1; i++)
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        prediction.Controls.Add(layout);
+        var layout = AddTabLayout(prediction);
 
         var inputs = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = false };
-        var seedInput = AddInput(inputs, "SYS_GROWTH_SEED_INPUT", m_ViewModel.GrowthSeed, value => m_ViewModel.GrowthSeed = value);
-        AddInput(inputs, "SYS_MAX_RNG_ADVANCES", m_ViewModel.MaxAdvances, value => m_ViewModel.MaxAdvances = value);
+        var seedInput = AddInput(inputs, () => catalog["SYS_GROWTH_SEED_INPUT"], m_ViewModel.GrowthSeed, value => m_ViewModel.GrowthSeed = value);
+        AddInput(inputs, () => catalog["SYS_MAX_RNG_ADVANCES"], m_ViewModel.MaxAdvances, value => m_ViewModel.MaxAdvances = value);
         layout.Controls.Add(inputs, 0, 0);
         layout.Controls.Add(CreatePredictionFilters(), 0, 1);
 
@@ -78,14 +79,18 @@ public sealed partial class MainForm : Form
         actions.Controls.Add(calculate);
         m_Error.Anchor = AnchorStyles.Left;
         actions.Controls.Add(m_Error);
-        tabs.SelectedIndexChanged += (_, _) => AcceptButton = tabs.SelectedTab == prediction ? calculate : null;
+        tabs.SelectedIndexChanged += (_, _) =>
+        {
+            settings.Visible = tabs.SelectedTab != mapRandom;
+            AcceptButton = tabs.SelectedTab == mapRandom ? mapCalculate : tabs.SelectedTab == prediction ? calculate : null;
+        };
         layout.Controls.Add(actions, 0, 2);
 
-        AddResultColumn(() => catalog["SYS_RNG_ADVANCES"], 68);
-        var growthSeedColumn = AddResultColumn(() => catalog["SYS_GROWTH_SEED"], 110);
+        AddResultColumn(m_Results, () => catalog["SYS_RNG_ADVANCES"], 68);
+        var growthSeedColumn = AddResultColumn(m_Results, () => catalog["SYS_GROWTH_SEED"], 110);
         foreach (var stat in m_ViewModel.GrowthRates)
-            AddResultColumn(() => stat.Name, 42).DefaultCellStyle.Format = "+0;-0;0";
-        var nextSeedColumn = AddResultColumn(() => catalog["SYS_NEXT_GROWTH_SEED"], 110);
+            AddResultColumn(m_Results, () => stat.Name, 42).DefaultCellStyle.Format = "+0;-0;0";
+        var nextSeedColumn = AddResultColumn(m_Results, () => catalog["SYS_NEXT_GROWTH_SEED"], 110);
         var seedMenu = new SeedCellMenu(m_Results, m_Text, AdoptSeed);
         components!.Add(seedMenu);
         m_Results.CellContextMenuStripNeeded += (_, e) =>
@@ -154,11 +159,74 @@ public sealed partial class MainForm : Form
         });
     }
 
-    private TextBox AddInput(FlowLayoutPanel panel, string key, string initialValue, Action<string> update)
+    private static TableLayoutPanel AddTabLayout(TabPage tab)
+    {
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(12) };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        for (int i = 0; i < layout.RowCount - 1; i++)
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        tab.Controls.Add(layout);
+        return layout;
+    }
+
+    private Button BuildMapRandomPage(TabPage page)
+    {
+        var catalog = m_Text.Catalog;
+        var model = new MapRandomViewModel(catalog);
+        var layout = AddTabLayout(page);
+        layout.Controls.Add(m_Text.Label("SYS_MAP_RNG_INPUT_HINT"), 0, 0);
+        var inputs = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top };
+        var results = CreateResultsGrid();
+        AddResultColumn(results, () => catalog["SYS_RNG_ADVANCES"], 68);
+        foreach (var (index, word) in "XYZW".Index())
+        {
+            string label = word.ToString();
+            AddInput(inputs, () => label, model.Words[index], value => model.Words[index] = value);
+            AddResultColumn(results, () => label, 90);
+        }
+        layout.Controls.Add(inputs, 0, 1);
+
+        var actions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top };
+        AddInput(actions, () => catalog["SYS_MAX_RNG_ADVANCES"], model.MaxAdvances, value => model.MaxAdvances = value);
+        var calculate = new Button { AutoSize = true };
+        var error = new Label { AutoSize = true, Anchor = AnchorStyles.Left };
+        m_Text.Bind(() =>
+        {
+            calculate.Text = catalog["SYS_CALCULATE"];
+            results.AccessibleName = catalog["SYS_MAP_RNG_TAB"];
+            error.Text = model.ErrorMessage;
+        });
+        calculate.Click += (_, _) =>
+        {
+            model.Calculate();
+            error.Text = model.ErrorMessage;
+            results.RowCount = model.Results.Count;
+            results.Invalidate();
+        };
+        actions.Controls.Add(calculate);
+        actions.Controls.Add(error);
+        layout.Controls.Add(actions, 0, 2);
+
+        results.CellValueNeeded += (_, e) =>
+        {
+            if (e.RowIndex < 0 || e.RowIndex >= model.Results.Count)
+                return;
+            var row = model.Results[e.RowIndex];
+            e.Value = e.ColumnIndex switch
+            {
+                0 => row.Advances, 1 => row.X, 2 => row.Y, 3 => row.Z, 4 => row.W, _ => null
+            };
+        };
+        layout.Controls.Add(results, 0, 3);
+        return calculate;
+    }
+
+    private TextBox AddInput(FlowLayoutPanel panel, Func<string> caption, string initialValue, Action<string> update)
     {
         var input = new TextBox { Text = initialValue };
-        var label = m_Text.Label(key, input);
-        label.Anchor = AnchorStyles.Left;
+        var label = new Label { AutoSize = true, Anchor = AnchorStyles.Left };
+        m_Text.Bind(() => label.Text = input.AccessibleName = caption());
         input.TextChanged += (_, _) => update(input.Text);
         panel.Controls.Add(label);
         panel.Controls.Add(input);
@@ -220,7 +288,7 @@ public sealed partial class MainForm : Form
         }
     }
 
-    private DataGridViewTextBoxColumn AddResultColumn(Func<string> header, int width)
+    private DataGridViewTextBoxColumn AddResultColumn(DataGridView grid, Func<string> header, int width)
     {
         var column = new DataGridViewTextBoxColumn
         {
@@ -228,7 +296,7 @@ public sealed partial class MainForm : Form
             SortMode = DataGridViewColumnSortMode.NotSortable
         };
         m_Text.Bind(() => column.HeaderText = header());
-        m_Results.Columns.Add(column);
+        grid.Columns.Add(column);
         return column;
     }
 

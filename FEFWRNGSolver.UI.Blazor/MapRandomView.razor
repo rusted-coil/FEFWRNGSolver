@@ -1,0 +1,80 @@
+@using FEFWRNGSolver.Presentation
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+
+<h2>@Text["SYS_MAP_RNG_TAB"]</h2>
+<form @onsubmit="Calculate" @onsubmit:preventDefault>
+    <fieldset class="search-inputs">
+        <legend>@Text["SYS_MAP_RNG_INPUT_HINT"]</legend>
+        <div class="prediction-settings">
+            @for (int i = 0; i < m_Model.Words.Length; i++)
+            {
+                var index = i;
+                <label>@WordNames[index]
+                    <input class="seed" @bind="m_Model.Words[index]" @bind:event="oninput"
+                           spellcheck="false" autocapitalize="characters" />
+                </label>
+            }
+        </div>
+    </fieldset>
+    <div class="prediction-settings search-inputs">
+        <label>@Text["SYS_MAX_RNG_ADVANCES"]
+            <input @bind="m_Model.MaxAdvances" @bind:event="oninput" inputmode="numeric" />
+        </label>
+    </div>
+    @if (m_Model.ErrorMessage is not null)
+    {
+        <p role="alert">@m_Model.ErrorMessage</p>
+    }
+    <button type="submit">@Text["SYS_CALCULATE"]</button>
+</form>
+
+<h3 id="map-random-results">@Text["SYS_PREDICTION_RESULTS"]</h3>
+<div class="table-scroll" @key="m_Model.Results" role="region" aria-labelledby="map-random-results" tabindex="0">
+    <table>
+        <thead>
+            <tr>
+                <th scope="col">@Text["SYS_RNG_ADVANCES"]</th>
+                @foreach (var word in WordNames)
+                {
+                    <th scope="col">@word</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @if (m_Model.Results.Count == 0)
+            {
+                <tr><td class="empty" colspan="5">@Text["SYS_PREDICTION_EMPTY"]</td></tr>
+            }
+            else
+            {
+                <Virtualize TItem="MapRandomRow" ItemsProvider="GetRows" Context="row" ItemSize="40" SpacerElement="tr">
+                    <tr @key="row.Advances">
+                        <td>@row.Advances</td>
+                        <td class="seed">@row.X</td>
+                        <td class="seed">@row.Y</td>
+                        <td class="seed">@row.Z</td>
+                        <td class="seed">@row.W</td>
+                    </tr>
+                </Virtualize>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private const string WordNames = "XYZW";
+    [CascadingParameter] public LocalizationCatalog Text { get; set; } = null!;
+    private MapRandomViewModel m_Model = null!;
+
+    protected override void OnInitialized() => m_Model = new(Text);
+
+    private void Calculate() => m_Model.Calculate();
+
+    private ValueTask<ItemsProviderResult<MapRandomRow>> GetRows(ItemsProviderRequest request)
+    {
+        var results = m_Model.Results;
+        return ValueTask.FromResult(new ItemsProviderResult<MapRandomRow>(
+            results.Skip(request.StartIndex).Take(request.Count), results.Count));
+    }
+}

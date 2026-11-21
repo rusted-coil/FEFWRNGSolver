@@ -20,8 +20,7 @@ internal struct GrowthRandom
 
     public uint Next31()
     {
-        uint t = m_X ^ (m_X << 11);
-        uint next = m_W ^ (m_W >> 19) ^ t ^ (t >> 8);
+        uint next = Xorshift128.NextWord(m_X, m_W);
         (m_X, m_Y, m_Z, m_W) = (m_Y, m_Z, m_W, next);
         return next & 0x7FFFFFFFu;
     }

@@ -29,20 +29,31 @@ public static class LevelUpSimulation
         int levelUpCount, ImmutableArray<int> cappedStatIndices, byte targetStatCount = 0)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(levelUpCount, 1);
-        return Simulate(growthSeed, effectiveGrowthRates, levelUpCount - 1, cappedStatIndices, targetStatCount, carryStatGains: true);
+        return Simulate(growthSeed, [("", effectiveGrowthRates)], levelUpCount - 1, cappedStatIndices, targetStatCount,
+            carryStatGains: true).Select(result => result.Step);
     }
 
     /// <summary>能力値を固定し、乱数を0～maxAdvances回消費した各時点での次のレベルアップを予測します。</summary>
     public static IEnumerable<LevelUpStep> PredictAtAdvances(uint growthSeed, ImmutableArray<short> effectiveGrowthRates,
-        int maxAdvances, ImmutableArray<int> cappedStatIndices, byte targetStatCount)
+        int maxAdvances, ImmutableArray<int> cappedStatIndices, byte targetStatCount) =>
+        PredictClassesAtAdvances(growthSeed, [("", effectiveGrowthRates)], maxAdvances, cappedStatIndices,
+            targetStatCount).Select(result => result.Step);
+
+    /// <summary>各消費数の同じ成長seedから候補兵種をそれぞれ予測し、消費数・候補順で返します。</summary>
+    public static IEnumerable<(int Advances, string ClassId, LevelUpStep Step)> PredictClassesAtAdvances(uint growthSeed,
+        IReadOnlyList<(string ClassId, ImmutableArray<short> Rates)> classes, int maxAdvances,
+        ImmutableArray<int> cappedStatIndices, byte targetStatCount)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(maxAdvances);
-        return Simulate(growthSeed, effectiveGrowthRates, maxAdvances, cappedStatIndices, targetStatCount, carryStatGains: false);
+        return Simulate(growthSeed, classes, maxAdvances, cappedStatIndices, targetStatCount, carryStatGains: false);
     }
 
-    private static IEnumerable<LevelUpStep> Simulate(uint growthSeed, ImmutableArray<short> effectiveGrowthRates,
+    private static IEnumerable<(int Advances, string ClassId, LevelUpStep Step)> Simulate(uint growthSeed,
+        IReadOnlyList<(string ClassId, ImmutableArray<short> Rates)> classes,
         int maxAdvances, ImmutableArray<int> cappedStatIndices, byte targetStatCount, bool carryStatGains)
     {
+        if (classes.Count == 0)
+            yield break;
         var currentStats = new int[9];
         var statCaps = Enumerable.Repeat(99, currentStats.Length).ToArray();
         foreach (int index in cappedStatIndices)
@@ -53,14 +64,19 @@ public static class LevelUpSimulation
         }
         for (int remaining = maxAdvances; remaining >= 0; remaining--)
         {
-            var result = RandomLevelUp.Calculate(growthSeed, effectiveGrowthRates.AsSpan(), currentStats, statCaps, targetStatCount);
-            yield return new LevelUpStep(growthSeed, result.StatGains, result.NextGrowthSeed);
-            growthSeed = result.NextGrowthSeed;
-            if (carryStatGains)
+            uint nextSeed = growthSeed;
+            foreach (var (classId, rates) in classes)
             {
-                for (int i = 0; i < currentStats.Length; i++)
-                    currentStats[i] += result.StatGains[i];
+                var result = RandomLevelUp.Calculate(growthSeed, rates.AsSpan(), currentStats, statCaps, targetStatCount);
+                yield return (maxAdvances - remaining, classId, new(growthSeed, result.StatGains, result.NextGrowthSeed));
+                nextSeed = result.NextGrowthSeed;
+                if (carryStatGains)
+                {
+                    for (int i = 0; i < currentStats.Length; i++)
+                        currentStats[i] += result.StatGains[i];
+                }
             }
+            growthSeed = nextSeed;
         }
     }
 }

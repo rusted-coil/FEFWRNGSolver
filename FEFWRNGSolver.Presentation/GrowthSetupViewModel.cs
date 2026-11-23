@@ -4,6 +4,8 @@ using FEFWRNGSolver.Domain;
 namespace FEFWRNGSolver.Presentation;
 
 public sealed record GrowthOption(string Id, string Name);
+public sealed record PredictionClassOption(string Id, string Name, bool IsAvailable);
+public sealed record PredictionClassGroup(string Name, IReadOnlyList<PredictionClassOption> Classes);
 
 public sealed class GrowthSetupViewModel
 {
@@ -18,7 +20,7 @@ public sealed class GrowthSetupViewModel
     internal GrowthSetupViewModel(LocalizationCatalog text, GrowthRateMasterData master) => (m_Text, m_Master) = (text, master);
 
     private sealed record LocalizedOptions(string Language, string UnitId, string ClassId,
-        GrowthOption[] Units, GrowthOption[] Classes, GrowthOption[] Animals);
+        GrowthOption[] Units, GrowthOption[] Classes, GrowthOption[] Animals, PredictionClassGroup[] PredictionClassGroups);
 
     private LocalizedOptions Options
     {
@@ -34,13 +36,29 @@ public sealed class GrowthSetupViewModel
             GrowthOption unassigned = new("", m_Text["SYS_ANIMAL_UNASSIGNED"]);
             GrowthOption[] animals = ClassId.Length == 0 ? [unassigned] : [unassigned, .. m_Master.GetAnimalsFor(m_Master.Classes[ClassId])
                 .Select(a => new GrowthOption(a.Id, m_Text[GetAnimalNameKey(a.Id)]))];
-            return m_Options = new(m_Text.Code, UnitId, ClassId, units, classes, animals);
+            return m_Options = new(m_Text.Code, UnitId, ClassId, units, classes, animals, GetPredictionClassGroups());
         }
     }
 
     public IReadOnlyList<GrowthOption> Units => Options.Units;
     public IReadOnlyList<GrowthOption> Classes => Options.Classes;
     public IReadOnlyList<GrowthOption> Animals => Options.Animals;
+    public IReadOnlyList<PredictionClassGroup> PredictionClassGroups => Options.PredictionClassGroups;
+
+    private PredictionClassGroup[] GetPredictionClassGroups()
+    {
+        var unit = SelectedUnit;
+        var byTier = m_Master.ClassRoster.ToLookup(job => job.Tier, job =>
+            new PredictionClassOption(job.Id, m_Text.Job(job.Id), unit is not null && job.IsAvailableTo(unit)));
+        return
+        [
+            new(m_Text["SYS_CLASS_TIER_BEGINNER"], [.. byTier[ClassTier.Beginner]]),
+            new(m_Text["SYS_CLASS_TIER_INTERMEDIATE"], [.. byTier[ClassTier.Intermediate]]),
+            new(m_Text["SYS_CLASS_TIER_ADVANCED"], [.. byTier[ClassTier.Advanced]]),
+            new(m_Text["SYS_CLASS_TIER_MASTER"], [.. byTier[ClassTier.Master]]),
+            new(m_Text["SYS_CLASS_TIER_DIVINE"], [.. byTier[ClassTier.Divine]])
+        ];
+    }
 
     private GrowthOption GetUnitOption(UnitGrowthData unit)
     {
@@ -135,10 +153,13 @@ public sealed class GrowthSetupViewModel
         }
     }
 
-    internal ImmutableArray<short> GetEffectiveRates(GrowthSkillBonus skillBonus)
+    internal ImmutableArray<short> GetEffectiveRates(GrowthSkillBonus skillBonus) => GetEffectiveRates(skillBonus, ClassId);
+
+    internal ImmutableArray<short> GetEffectiveRates(GrowthSkillBonus skillBonus, string classId)
     {
-        AssignedAnimal? animal = HasAnimal ? new(AnimalId, Affection) : null;
-        return m_Master.Calculate(new(UnitId, ClassId, animal, skillBonus));
+        AssignedAnimal? animal = HasAnimal && m_Master.Classes[classId].CanDeploy(m_Master.Animals[AnimalId])
+            ? new(AnimalId, Affection) : null;
+        return m_Master.Calculate(new(UnitId, classId, animal, skillBonus));
     }
 
     // 保存済みの個体IDと、表示名のシステムメッセージを対応付ける。

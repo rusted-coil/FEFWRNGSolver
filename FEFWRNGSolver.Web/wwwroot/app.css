@@ -54,6 +54,15 @@ input, select { width: 100%; padding: .45rem .6rem; border: 1px solid #8b9d97; c
 .growth-conditions label { grid-template-columns: 2.5rem minmax(0, 1fr); align-items: center; }
 .growth-count { display: flex; gap: .5rem; align-items: center; margin-bottom: 1rem; font-weight: 600; }
 .growth-count input { width: 3rem; min-width: 0; padding-inline: .25rem; }
+.class-change-controls { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.class-change-controls button { padding: .35rem .85rem; }
+.class-change-controls label, .class-tiers label { display: flex; align-items: center; gap: .4rem; }
+.class-change-controls input, .class-tiers input { width: auto; margin: 0; accent-color: #1a6858; }
+.class-settings { overflow-x: auto; }
+.class-tiers { display: grid; grid-template-columns: repeat(5, minmax(max-content, 1fr)); gap: 1rem; padding: .25rem .25rem 1rem; }
+.class-tiers fieldset { margin: 0; }
+.class-tiers label { padding: .2rem 0; font-weight: 400; }
+.class-tiers label:has(:disabled) { color: #586c64; }
 @media (max-width: 36rem) {
     .growth-conditions { column-gap: .75rem; }
     .growth-conditions label { grid-template-columns: minmax(0, 1fr); }

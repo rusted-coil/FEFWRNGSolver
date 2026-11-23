@@ -12,6 +12,8 @@ public sealed class MainViewModel
     private ValidationError? m_Error;
     private GrowthSkillBonus m_SelectedSkillBonus;
     private bool m_IsPartThree;
+    private bool m_ConsiderClassChanges;
+    private ImmutableHashSet<string> m_PredictionClassIds = [];
     private string m_ManualGuaranteedStatCount = "2";
 
     public string Title => m_Text["SYS_APP_TITLE"];
@@ -19,6 +21,28 @@ public sealed class MainViewModel
     public string MaxAdvances { get; set; } = "100";
     public int MinGrowthCount { get; set; }
     public int MaxGrowthCount { get; set; } = 9;
+    public bool ConsiderClassChanges
+    {
+        get => m_ConsiderClassChanges;
+        set
+        {
+            if (Setup.IsManual || value == m_ConsiderClassChanges)
+                return;
+            m_ConsiderClassChanges = value;
+            SaveSettings();
+        }
+    }
+
+    public bool IsPredictionClassSelected(string id) => m_PredictionClassIds.Contains(id);
+
+    public void SetPredictionClassSelected(string id, bool selected)
+    {
+        if (selected == IsPredictionClassSelected(id) || !Setup.Classes.Any(job => job.Id == id))
+            return;
+        m_PredictionClassIds = selected ? m_PredictionClassIds.Add(id) : m_PredictionClassIds.Remove(id);
+        SaveSettings();
+    }
+
     public IReadOnlyList<GrowthConditionOption> GrowthConditionOptions =>
     [
         new(StatGrowthCondition.Capped, m_Text["SYS_FILTER_CAPPED"]),
@@ -64,21 +88,21 @@ public sealed class MainViewModel
         get => m_SelectedSkillBonus;
         set
         {
-            if (m_SelectedSkillBonus == value || !IsSkillAvailable(value))
+            if (m_SelectedSkillBonus == value || !IsSkillAvailable(value, Setup.ClassId))
                 return;
             m_SelectedSkillBonus = value;
             OnSettingsChanged();
         }
     }
     public IReadOnlyList<SkillBonusOption> SkillOptions =>
-        [.. GetSkillOptions(m_Text).Where(option => IsSkillAvailable(option.Value))];
+        [.. GetSkillOptions(m_Text).Where(option => IsSkillAvailable(option.Value, Setup.ClassId))];
     public static IReadOnlyList<SkillBonusOption> SkillBonusOptions => GetSkillOptions(LocalizationCatalog.Default);
 
-    private bool IsSkillAvailable(GrowthSkillBonus skill) => skill switch
+    private static bool IsSkillAvailable(GrowthSkillBonus skill, string classId) => skill switch
     {
         GrowthSkillBonus.None => true,
-        GrowthSkillBonus.CharioteersPath35 or GrowthSkillBonus.CharioteersPath45 => Setup.ClassId == "JID_戦車兵",
-        GrowthSkillBonus.ElephantRidersPath45 => Setup.ClassId == "JID_戦象兵",
+        GrowthSkillBonus.CharioteersPath35 or GrowthSkillBonus.CharioteersPath45 => classId == "JID_戦車兵",
+        GrowthSkillBonus.ElephantRidersPath45 => classId == "JID_戦象兵",
         _ => false
     };
 
@@ -122,6 +146,8 @@ public sealed class MainViewModel
     {
         var settings = Setup.IsManual ? null : m_Store.Load(Setup.UnitId);
         Setup.RestoreSelection(settings);
+        m_ConsiderClassChanges = settings?.ConsiderClassChanges == true;
+        m_PredictionClassIds = settings?.PredictionClassIds?.Intersect(Setup.Classes.Select(job => job.Id)) ?? [];
         m_IsPartThree = CanSelectPartThree && settings?.IsPartThree == true;
         m_SelectedSkillBonus = settings?.SkillBonus ?? GrowthSkillBonus.None;
         GrowthSeed = settings?.GrowthSeed?.ToString("X8") ?? "";
@@ -142,7 +168,11 @@ public sealed class MainViewModel
             return;
         // seed欄には入力途中の値もあるので、設定だけの変更では保存済みのseedを引き継ぐ。
         seed ??= m_Store.Load(Setup.UnitId)?.GrowthSeed;
-        m_Store.Save(Setup.UnitId, new(Setup.ClassId, Setup.AnimalId, Setup.Affection, SelectedSkillBonus, seed, IsPartThree));
+        m_Store.Save(Setup.UnitId, new(Setup.ClassId, Setup.AnimalId, Setup.Affection, SelectedSkillBonus, seed, IsPartThree)
+        {
+            ConsiderClassChanges = ConsiderClassChanges,
+            PredictionClassIds = m_PredictionClassIds
+        });
     }
 
     public void AdoptGrowthSeed(uint seed)
@@ -161,7 +191,7 @@ public sealed class MainViewModel
 
     private void RefreshGrowthRates()
     {
-        if (!IsSkillAvailable(m_SelectedSkillBonus))
+        if (!IsSkillAvailable(m_SelectedSkillBonus, Setup.ClassId))
             m_SelectedSkillBonus = GrowthSkillBonus.None;
         var selectedRates = SelectedGrowthRates;
         for (int i = 0; i < GrowthRates.Count; i++)
@@ -182,19 +212,47 @@ public sealed class MainViewModel
         if (MinGrowthCount < 0 || MaxGrowthCount > GrowthRates.Count || MinGrowthCount > MaxGrowthCount)
             return Fail(new("SYS_INVALID_GROWTH_COUNT"));
 
-        if (!TryGetGrowthSettings(out var rates, out var targetStatCount, out var error))
-            return Fail(error);
+        if (!TryGetGuaranteedStatCount(out var targetStatCount))
+            return Fail(new("SYS_INVALID_GUARANTEED_STAT_COUNT"));
+
+        IEnumerable<string> classIds = ConsiderClassChanges
+            ? Setup.Classes.Select(job => job.Id).Where(IsPredictionClassSelected)
+            : [Setup.ClassId];
+        var candidates = new List<(string ClassId, ImmutableArray<short> Rates)>();
+        foreach (string id in classIds)
+        {
+            ImmutableArray<short> rates;
+            if (id == Setup.ClassId)
+            {
+                if (!TryGetEffectiveRates(out rates, out var error))
+                    return Fail(error);
+            }
+            else
+            {
+                var skill = IsSkillAvailable(SelectedSkillBonus, id) ? SelectedSkillBonus : GrowthSkillBonus.None;
+                rates = Setup.GetEffectiveRates(skill, id);
+            }
+            candidates.Add((id, rates));
+        }
 
         var cappedStats = GrowthRates.Where(input => input.Condition == StatGrowthCondition.Capped)
             .Select(input => input.InternalIndex).ToImmutableArray();
-        var steps = LevelUpSimulation.PredictAtAdvances(seed, rates, maxAdvances, cappedStats, targetStatCount);
+        var steps = LevelUpSimulation.PredictClassesAtAdvances(seed, candidates, maxAdvances, cappedStats, targetStatCount);
         var rows = new List<LevelUpRow>(maxAdvances + 1);
-        foreach (var (advances, step) in steps.Index())
+        int previousAdvance = -1;
+        string currentSeed = "", nextSeed = "";
+        foreach (var (advances, classId, step) in steps)
         {
             if (!MatchesGrowthConditions(step.StatGains))
                 continue;
             var gains = GrowthRates.Select(input => step.StatGains[input.InternalIndex]).ToImmutableArray();
-            rows.Add(new LevelUpRow(advances, step.GrowthSeed.ToString("X8"), gains, step.NextGrowthSeed.ToString("X8")));
+            if (previousAdvance != advances)
+            {
+                currentSeed = step.GrowthSeed.ToString("X8");
+                nextSeed = step.NextGrowthSeed.ToString("X8");
+                previousAdvance = advances;
+            }
+            rows.Add(new LevelUpRow(advances, currentSeed, gains, nextSeed) { ClassId = classId });
         }
         Results = rows.AsReadOnly();
         HasCalculated = true;
@@ -219,14 +277,16 @@ public sealed class MainViewModel
 
     internal bool TryGetGrowthSettings(out ImmutableArray<short> rates, out byte targetStatCount, out ValidationError error)
     {
-        if (byte.TryParse(GuaranteedStatCount, NumberStyles.None, CultureInfo.InvariantCulture, out targetStatCount)
-            && targetStatCount <= GrowthRates.Count)
+        if (TryGetGuaranteedStatCount(out targetStatCount))
             return TryGetEffectiveRates(out rates, out error);
 
         rates = default;
         error = new("SYS_INVALID_GUARANTEED_STAT_COUNT");
         return false;
     }
+
+    private bool TryGetGuaranteedStatCount(out byte count) =>
+        byte.TryParse(GuaranteedStatCount, NumberStyles.None, CultureInfo.InvariantCulture, out count) && count <= GrowthRates.Count;
 
     internal bool TryGetEffectiveRates(out ImmutableArray<short> effectiveRates, out ValidationError error)
     {
@@ -293,4 +353,7 @@ public sealed class GrowthRateInput
         m_UnitRate = unitRate?.ToString(CultureInfo.InvariantCulture);
 }
 
-public sealed record LevelUpRow(int Advances, string GrowthSeed, ImmutableArray<int> StatGains, string NextGrowthSeed);
+public sealed record LevelUpRow(int Advances, string GrowthSeed, ImmutableArray<int> StatGains, string NextGrowthSeed)
+{
+    public string ClassId { get; init; } = "";
+}

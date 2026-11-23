@@ -120,6 +120,7 @@ public sealed class MainViewModelTests
         Assert.IsTrue(model.Calculate(), model.ErrorMessage);
         Assert.AreEqual(2, model.Results.Count);
         var first = model.Results[0];
+        Assert.AreEqual("", first.ClassId);
         Assert.AreEqual(0, first.Advances);
         Assert.AreEqual("075BCD15", first.GrowthSeed);
         CollectionAssert.AreEqual(new[] { 1, 2, 5, 7, 8, 11, 12, 15, 16 }, first.StatGains.ToArray());

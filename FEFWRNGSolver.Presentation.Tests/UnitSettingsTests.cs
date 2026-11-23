@@ -109,6 +109,66 @@ public sealed class UnitSettingsTests
     }
 
     [TestMethod]
+    public void RestoresPredictionClassesAndFlagIndependentlyForEachUnit()
+    {
+        const string pegasus = "JID_天翼兵";
+        const string soldier = "JID_兵士";
+        var store = new JsonStore();
+        var old = UnitSettingsJson.Deserialize("""{"ClassId":"JID_兵士","AnimalId":"","Affection":5,"SkillBonus":0,"GrowthSeed":123}""")!;
+        store.Save(Female, old);
+        var model = new MainViewModel(store);
+        model.Setup.UnitId = Female;
+        Assert.IsFalse(model.ConsiderClassChanges);
+        Assert.IsFalse(model.Setup.Classes.Any(job => model.IsPredictionClassSelected(job.Id)));
+        model.ConsiderClassChanges = true;
+        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
+        Assert.IsTrue(model.HasCalculated);
+        Assert.AreEqual(0, model.Results.Count);
+        model.SetPredictionClassSelected(pegasus, true);
+        model.SetPredictionClassSelected(soldier, true);
+        model.SetPredictionClassSelected(soldier, false);
+
+        model.Setup.UnitId = Male;
+        Assert.IsFalse(model.ConsiderClassChanges);
+        Assert.IsFalse(model.Setup.Classes.Any(job => model.IsPredictionClassSelected(job.Id)));
+        model.SetPredictionClassSelected(soldier, true);
+        var reopened = new MainViewModel(store);
+        reopened.Setup.UnitId = Female;
+        Assert.IsTrue(reopened.ConsiderClassChanges);
+        Assert.IsTrue(reopened.IsPredictionClassSelected(pegasus));
+        Assert.IsFalse(reopened.IsPredictionClassSelected(soldier));
+        reopened.Setup.UnitId = Male;
+        Assert.IsFalse(reopened.ConsiderClassChanges);
+        Assert.IsTrue(reopened.IsPredictionClassSelected(soldier));
+        Assert.IsFalse(reopened.IsPredictionClassSelected(pegasus));
+    }
+
+    [TestMethod]
+    public void ListsAllTiersAndIgnoresUnavailableOrUnknownSavedClasses()
+    {
+        const string pegasus = "JID_天翼兵";
+        const string soldier = "JID_兵士";
+        var store = new JsonStore();
+        store.Save(Male, new("JID_闘士", "", 5, GrowthSkillBonus.None, 0)
+        {
+            ConsiderClassChanges = true, PredictionClassIds = [pegasus, soldier, "unknown"]
+        });
+        var model = new MainViewModel(store) { MaxAdvances = "0" };
+        model.Setup.UnitId = Male;
+        var groups = model.Setup.PredictionClassGroups;
+        CollectionAssert.AreEqual(new[] { "下級職", "中級職", "上級職", "最上級職", "神将職" },
+            groups.Select(group => group.Name).ToArray());
+        var options = groups.SelectMany(group => group.Classes).ToArray();
+        CollectionAssert.AreEquivalent(GrowthRateMasterData.Default.Classes.Keys.ToArray(), options.Select(job => job.Id).ToArray());
+        Assert.IsFalse(groups[1].Classes.Single(job => job.Id == pegasus).IsAvailable);
+        Assert.IsTrue(groups[0].Classes.Single(job => job.Id == soldier).IsAvailable);
+        Assert.IsFalse(model.IsPredictionClassSelected(pegasus));
+        Assert.IsFalse(model.IsPredictionClassSelected("unknown"));
+        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
+        Assert.AreEqual(soldier, model.Results.Single().ClassId);
+    }
+
+    [TestMethod]
     public void IgnoresSavedSkillFromAnIncompatibleClass()
     {
         var store = new JsonStore();

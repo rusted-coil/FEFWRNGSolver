@@ -11,6 +11,7 @@ public readonly record struct StatGrowthRates(short Hp = 0, short Strength = 0, 
 
 public enum UnitGender { Male, Female }
 public enum AnimalType { Horse, Ornius, Pegasus, Bau, Elephant }
+public enum ClassTier { Beginner, Intermediate, Advanced, Master, Divine }
 
 /// <summary>ムウの個人成長率には「成長の兆し」を含めて登録します。</summary>
 public sealed record UnitGrowthData(string Id, string Name, UnitGender Gender, StatGrowthRates PersonalRates,
@@ -22,6 +23,7 @@ public sealed record UnitGrowthData(string Id, string Name, UnitGender Gender, S
 public sealed record ClassGrowthData(string Id, string Name, StatGrowthRates Modifiers, bool FemaleOnly = false,
     AnimalType? AllowedAnimalType = null, int AnimalMultiplier = 1)
 {
+    public ClassTier Tier { get; init; }
     public bool IsAvailableTo(UnitGrowthData unit) => !FemaleOnly || unit.Gender == UnitGender.Female;
     public bool CanDeploy(AnimalGrowthData animal) => AllowedAnimalType == animal.Type;
 }
@@ -65,6 +67,7 @@ public sealed class GrowthRateMasterData(ImmutableArray<UnitGrowthData> units, I
     public ImmutableDictionary<string, ClassGrowthData> Classes { get; } = classes.ToImmutableDictionary(row => row.Id);
     public ImmutableDictionary<string, AnimalGrowthData> Animals { get; } = animals.ToImmutableDictionary(row => row.Id);
     public ImmutableArray<UnitGrowthData> UnitRoster => units;
+    public ImmutableArray<ClassGrowthData> ClassRoster => classes;
 
     public IEnumerable<ClassGrowthData> GetClassesFor(UnitGrowthData unit) =>
         classes.Where(job => job.IsAvailableTo(unit));

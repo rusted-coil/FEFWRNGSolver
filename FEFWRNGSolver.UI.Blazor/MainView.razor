@@ -58,6 +58,36 @@
                 <input type="number" min="0" max="9" required aria-label="@Text["SYS_FILTER_MAX_GROWTH_COUNT"]"
                        @bind="m_ViewModel.MaxGrowthCount" @bind:event="oninput" />
             </div>
+            <div class="class-change-controls">
+                <label><input type="checkbox" @bind="m_ViewModel.ConsiderClassChanges" disabled="@m_ViewModel.Setup.IsManual" />
+                    @Text["SYS_CONSIDER_CLASS_CHANGES"]
+                </label>
+                <button type="button" class="secondary" disabled="@m_ViewModel.Setup.IsManual"
+                        aria-expanded="@(m_ShowClassSettings ? "true" : "false")" aria-controls="prediction-class-settings"
+                        @onclick="() => m_ShowClassSettings = !m_ShowClassSettings">@Text["SYS_SETTINGS"]</button>
+            </div>
+            <div id="prediction-class-settings" class="class-settings">
+                @if (m_ShowClassSettings)
+                {
+                    <div class="class-tiers">
+                        @foreach (var group in m_ViewModel.Setup.PredictionClassGroups)
+                        {
+                            <fieldset>
+                                <legend>@group.Name</legend>
+                                @foreach (var job in group.Classes)
+                                {
+                                    <label @key="job.Id">
+                                        <input type="checkbox" disabled="@(!job.IsAvailable)"
+                                               @bind:get="m_ViewModel.IsPredictionClassSelected(job.Id)"
+                                               @bind:set="(bool selected) => m_ViewModel.SetPredictionClassSelected(job.Id, selected)" />
+                                        @job.Name
+                                    </label>
+                                }
+                            </fieldset>
+                        }
+                    </div>
+                }
+            </div>
         </fieldset>
         @if (m_ViewModel.ErrorMessage is not null)
         {
@@ -72,6 +102,7 @@
             <thead>
                 <tr>
                     <th scope="col">@Text["SYS_RNG_ADVANCES"]</th>
+                    <th scope="col">@Text["SYS_JOB"]</th>
                     <th scope="col">@Text["SYS_GROWTH_SEED"]</th>
                     @foreach (var stat in m_ViewModel.GrowthRates)
                     {
@@ -83,13 +114,14 @@
             <tbody>
                 @if (m_ViewModel.Results.Count == 0)
                 {
-                    <tr><td class="empty" colspan="12">@Text[m_ViewModel.HasCalculated ? "SYS_PREDICTION_NO_MATCHES" : "SYS_PREDICTION_EMPTY"]</td></tr>
+                    <tr><td class="empty" colspan="13">@Text[m_ViewModel.HasCalculated ? "SYS_PREDICTION_NO_MATCHES" : "SYS_PREDICTION_EMPTY"]</td></tr>
                 }
                 else
                 {
                     <Virtualize TItem="LevelUpRow" ItemsProvider="GetRows" Context="row" ItemSize="40" SpacerElement="tr">
-                        <tr @key="row.Advances">
+                        <tr @key="(row.Advances, row.ClassId)">
                             <td>@row.Advances</td>
+                            <td>@Text.Job(row.ClassId)</td>
                             <SeedCell Seed="@row.GrowthSeed" SeedAdopted="AdoptSeed" />
                             @foreach (var gain in row.StatGains)
                             {
@@ -113,6 +145,7 @@
     private SeedSearchViewModel m_Search = null!;
     private MainViewModel m_ViewModel => m_Search.Settings;
     private bool m_ShowPrediction;
+    private bool m_ShowClassSettings;
     private ElementReference m_PredictionTab;
     private ElementReference m_SeedTab;
 
@@ -124,7 +157,11 @@
         m_ViewModel.UnitSelected += OnUnitSelected;
     }
 
-    private void OnUnitSelected() => m_ShowPrediction = m_ViewModel.GrowthSeed.Length > 0;
+    private void OnUnitSelected()
+    {
+        m_ShowPrediction = m_ViewModel.GrowthSeed.Length > 0;
+        m_ShowClassSettings = false;
+    }
 
     private async Task AdoptSeed(uint seed)
     {

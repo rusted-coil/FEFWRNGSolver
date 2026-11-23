@@ -39,7 +39,7 @@ public sealed partial class MainForm : Form
 
         var settings = new GrowthSettingsPanel(m_ViewModel, m_Text) { TabIndex = 0 };
         var tabs = new TabControl { Dock = DockStyle.Fill, Padding = new Point(20, 8), TabIndex = 1 };
-        var prediction = new TabPage { AutoScrollMinSize = new Size(0, 440) };
+        var prediction = new TabPage { AutoScrollMinSize = new Size(0, 475) };
         var search = new TabPage();
         m_Text.Bind(() => prediction.Text = catalog["SYS_PREDICTION_TAB"]);
         m_Text.Bind(() => search.Text = catalog["SYS_SEARCH_TAB"]);
@@ -82,6 +82,11 @@ public sealed partial class MainForm : Form
         layout.Controls.Add(actions, 0, 2);
 
         AddResultColumn(() => catalog["SYS_RNG_ADVANCES"], 68);
+        var classColumn = AddResultColumn(() => catalog["SYS_JOB"], 110);
+        m_Text.Bind(() => classColumn.MinimumWidth = m_ViewModel.Setup.PredictionClassGroups
+            .SelectMany(group => group.Classes)
+            .Select(job => TextRenderer.MeasureText(job.Name, m_Results.Font).Width + 4)
+            .Append(110).Max());
         var growthSeedColumn = AddResultColumn(() => catalog["SYS_GROWTH_SEED"], 110);
         foreach (var stat in m_ViewModel.GrowthRates)
             AddResultColumn(() => stat.Name, 42).DefaultCellStyle.Format = "+0;-0;0";
@@ -95,7 +100,7 @@ public sealed partial class MainForm : Form
         };
         m_Results.CellValueNeeded += OnResultCellValueNeeded;
         layout.Controls.Add(m_Results, 0, 3);
-        m_Text.Bind(UpdatePredictionMessage);
+        m_Text.Bind(RefreshPredictionResults);
 
         void ShowUnitTab()
         {
@@ -208,6 +213,9 @@ public sealed partial class MainForm : Form
         AddCount("SYS_FILTER_MAX_GROWTH_COUNT", m_ViewModel.MaxGrowthCount, value => m_ViewModel.MaxGrowthCount = value);
         filters.Controls.Add(counts, 0, statsPerColumn);
         filters.SetColumnSpan(counts, filters.ColumnCount);
+        var classFilter = CreateClassFilter();
+        filters.Controls.Add(classFilter, 0, statsPerColumn + 1);
+        filters.SetColumnSpan(classFilter, filters.ColumnCount);
         group.Controls.Add(filters);
         return group;
 
@@ -217,6 +225,35 @@ public sealed partial class MainForm : Form
             m_Text.Bind(() => input.AccessibleName = m_Text.Catalog[key]);
             input.ValueChanged += (_, _) => update((int)input.Value);
             counts.Controls.Add(input);
+        }
+    }
+
+    private FlowLayoutPanel CreateClassFilter()
+    {
+        var panel = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = false };
+        var consider = new CheckBox { AutoSize = true, Anchor = AnchorStyles.Left };
+        var settings = new Button { AutoSize = true };
+        panel.Controls.Add(consider);
+        panel.Controls.Add(settings);
+        m_Text.Bind(() =>
+        {
+            consider.Text = m_Text.Catalog["SYS_CONSIDER_CLASS_CHANGES"];
+            settings.Text = m_Text.Catalog["SYS_SETTINGS"];
+        });
+        consider.Click += (_, _) => m_ViewModel.ConsiderClassChanges = consider.Checked;
+        settings.Click += (_, _) =>
+        {
+            using var dialog = new PredictionClassDialog(m_ViewModel, m_Text.Catalog);
+            dialog.ShowDialog(this);
+        };
+        m_ViewModel.UnitSelected += RefreshSelection;
+        RefreshSelection();
+        return panel;
+
+        void RefreshSelection()
+        {
+            consider.Enabled = settings.Enabled = !m_ViewModel.Setup.IsManual;
+            consider.Checked = consider.Enabled && m_ViewModel.ConsiderClassChanges;
         }
     }
 
@@ -253,9 +290,10 @@ public sealed partial class MainForm : Form
         e.Value = e.ColumnIndex switch
         {
             0 => row.Advances,
-            1 => row.GrowthSeed,
+            1 => m_Text.Catalog.Job(row.ClassId),
+            2 => row.GrowthSeed,
             var column when column == m_Results.ColumnCount - 1 => row.NextGrowthSeed,
-            _ => row.StatGains[e.ColumnIndex - 2]
+            _ => row.StatGains[e.ColumnIndex - 3]
         };
     }
 }

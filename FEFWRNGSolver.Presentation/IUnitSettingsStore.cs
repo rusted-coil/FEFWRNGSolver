@@ -1,9 +1,14 @@
+using System.Collections.Immutable;
 using FEFWRNGSolver.Domain;
 
 namespace FEFWRNGSolver.Presentation;
 
 public sealed record UnitSettings(string ClassId, string AnimalId, int Affection, GrowthSkillBonus SkillBonus, uint? GrowthSeed,
-    bool IsPartThree = false);
+    bool IsPartThree = false)
+{
+    public bool ConsiderClassChanges { get; init; }
+    public ImmutableHashSet<string> PredictionClassIds { get; init; } = [];
+}
 
 public interface IUnitSettingsStore
 {

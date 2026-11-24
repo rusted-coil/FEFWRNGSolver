@@ -240,6 +240,7 @@ public sealed class MainViewModel
         var steps = LevelUpSimulation.PredictClassesAtAdvances(seed, candidates, maxAdvances, cappedStats, targetStatCount);
         var rows = new List<LevelUpRow>(maxAdvances + 1);
         int previousAdvance = -1;
+        int minimumExamPassRate = 0;
         string currentSeed = "", nextSeed = "";
         foreach (var (advances, classId, step) in steps)
         {
@@ -250,9 +251,14 @@ public sealed class MainViewModel
             {
                 currentSeed = step.GrowthSeed.ToString("X8");
                 nextSeed = step.NextGrowthSeed.ToString("X8");
+                minimumExamPassRate = step.MinimumExamPassRate;
                 previousAdvance = advances;
             }
-            rows.Add(new LevelUpRow(advances, currentSeed, gains, nextSeed) { ClassId = classId });
+            rows.Add(new LevelUpRow(advances, currentSeed, gains, nextSeed)
+            {
+                ClassId = classId,
+                MinimumExamPassRate = minimumExamPassRate
+            });
         }
         Results = rows.AsReadOnly();
         HasCalculated = true;
@@ -356,4 +362,5 @@ public sealed class GrowthRateInput
 public sealed record LevelUpRow(int Advances, string GrowthSeed, ImmutableArray<int> StatGains, string NextGrowthSeed)
 {
     public string ClassId { get; init; } = "";
+    public int MinimumExamPassRate { get; init; }
 }

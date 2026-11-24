@@ -104,6 +104,8 @@ button:disabled { cursor: default; opacity: .55; }
 .table-scroll { overflow: auto; max-height: 65vh; }
 table { width: 100%; border-spacing: 0; white-space: nowrap; text-align: center; }
 thead th { position: sticky; top: 0; background: #e6eeea; font-size: .875rem; }
+th.compact-column { width: 1%; }
+th[title] { cursor: help; }
 th, td { height: 40px; padding: 0 .55rem; border-bottom: 1px solid #e0e7e3; }
 .seed { font-family: Consolas, monospace; letter-spacing: .04em; }
 .seed-menu {

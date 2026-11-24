@@ -40,6 +40,7 @@ public sealed class PredictionClassTests
             Assert.AreEqual(reference.Advances, actual.Advances);
             Assert.AreEqual(reference.ClassId, actual.ClassId);
             Assert.AreEqual(reference.GrowthSeed, actual.GrowthSeed);
+            Assert.AreEqual(reference.MinimumExamPassRate, actual.MinimumExamPassRate);
             Assert.AreEqual(reference.NextGrowthSeed, actual.NextGrowthSeed);
             CollectionAssert.AreEqual(reference.StatGains.ToArray(), actual.StatGains.ToArray());
         }

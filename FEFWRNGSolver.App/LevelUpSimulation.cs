@@ -3,7 +3,10 @@ using FEFWRNGSolver.Domain;
 
 namespace FEFWRNGSolver.App;
 
-public readonly record struct LevelUpStep(uint GrowthSeed, ImmutableArray<int> StatGains, uint NextGrowthSeed);
+public readonly record struct LevelUpStep(uint GrowthSeed, ImmutableArray<int> StatGains, uint NextGrowthSeed)
+{
+    public int MinimumExamPassRate => CertificationExam.GetMinimumPassRate(GrowthSeed);
+}
 
 public static class LevelUpSimulation
 {

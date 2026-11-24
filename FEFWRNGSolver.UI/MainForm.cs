@@ -25,7 +25,7 @@ public sealed partial class MainForm : Form
     private MainForm(LocalizationCatalog catalog, Action<string> saveLanguage)
     {
         InitializeComponent();
-        m_Text = new WindowText(catalog);
+        m_Text = new WindowText(catalog, components!);
         var store = new FileUnitSettingsStore((key, path) => ShowWarning(catalog.Format(key, path)));
         var searchModel = new SeedSearchViewModel(store, catalog);
         m_ViewModel = searchModel.Settings;
@@ -88,6 +88,11 @@ public sealed partial class MainForm : Form
             .Select(job => TextRenderer.MeasureText(job.Name, m_Results.Font).Width + 4)
             .Append(110).Max());
         var growthSeedColumn = AddResultColumn(() => catalog["SYS_GROWTH_SEED"], 110);
+        var examColumn = AddResultColumn(() => catalog["SYS_EXAM"], 42);
+        examColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.ColumnHeader;
+        m_Text.Bind(() => examColumn.MinimumWidth =
+            TextRenderer.MeasureText(catalog.Format("SYS_EXAM_MIN_PASS_RATE", 100), m_Results.Font).Width + 4);
+        m_Text.BindToolTip(examColumn, "SYS_EXAM_MIN_PASS_RATE_TOOLTIP");
         foreach (var stat in m_ViewModel.GrowthRates)
             AddResultColumn(() => stat.Name, 42).DefaultCellStyle.Format = "+0;-0;0";
         var nextSeedColumn = AddResultColumn(() => catalog["SYS_NEXT_GROWTH_SEED"], 110);
@@ -292,8 +297,9 @@ public sealed partial class MainForm : Form
             0 => row.Advances,
             1 => m_Text.Catalog.Job(row.ClassId),
             2 => row.GrowthSeed,
+            3 => m_Text.Catalog.Format("SYS_EXAM_MIN_PASS_RATE", row.MinimumExamPassRate),
             var column when column == m_Results.ColumnCount - 1 => row.NextGrowthSeed,
-            _ => row.StatGains[e.ColumnIndex - 3]
+            _ => row.StatGains[e.ColumnIndex - 4]
         };
     }
 }

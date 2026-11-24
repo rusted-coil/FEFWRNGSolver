@@ -104,6 +104,9 @@
                     <th scope="col">@Text["SYS_RNG_ADVANCES"]</th>
                     <th scope="col">@Text["SYS_JOB"]</th>
                     <th scope="col">@Text["SYS_GROWTH_SEED"]</th>
+                    <th scope="col" class="compact-column" @attributes="@(Tooltip.For(Text["SYS_EXAM_MIN_PASS_RATE_TOOLTIP"]))">
+                        @Text["SYS_EXAM"]
+                    </th>
                     @foreach (var stat in m_ViewModel.GrowthRates)
                     {
                         <th scope="col">@stat.Name</th>
@@ -114,7 +117,7 @@
             <tbody>
                 @if (m_ViewModel.Results.Count == 0)
                 {
-                    <tr><td class="empty" colspan="13">@Text[m_ViewModel.HasCalculated ? "SYS_PREDICTION_NO_MATCHES" : "SYS_PREDICTION_EMPTY"]</td></tr>
+                    <tr><td class="empty" colspan="14">@Text[m_ViewModel.HasCalculated ? "SYS_PREDICTION_NO_MATCHES" : "SYS_PREDICTION_EMPTY"]</td></tr>
                 }
                 else
                 {
@@ -123,6 +126,7 @@
                             <td>@row.Advances</td>
                             <td>@Text.Job(row.ClassId)</td>
                             <SeedCell Seed="@row.GrowthSeed" SeedAdopted="AdoptSeed" />
+                            <td>@Text.Format("SYS_EXAM_MIN_PASS_RATE", row.MinimumExamPassRate)</td>
                             @foreach (var gain in row.StatGains)
                             {
                                 <td class="@(gain > 0 ? "gain" : null)">@gain.ToString("+0;−0;0")</td>

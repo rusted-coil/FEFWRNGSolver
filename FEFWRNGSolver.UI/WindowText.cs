@@ -1,10 +1,12 @@
+using System.ComponentModel;
 using FEFWRNGSolver.Presentation;
 
 namespace FEFWRNGSolver.UI;
 
-internal sealed class WindowText(LocalizationCatalog catalog)
+internal sealed class WindowText(LocalizationCatalog catalog, IContainer components)
 {
     private readonly List<Action> m_Updates = [];
+    private ToolTip? m_ControlToolTip;
 
     public LocalizationCatalog Catalog { get; } = catalog;
 
@@ -12,6 +14,15 @@ internal sealed class WindowText(LocalizationCatalog catalog)
     {
         m_Updates.Add(update);
         update();
+    }
+
+    public void BindToolTip(DataGridViewColumn column, string key) =>
+        Bind(() => column.ToolTipText = Catalog[key]);
+
+    public void BindToolTip(Control control, string key)
+    {
+        var toolTip = m_ControlToolTip ??= new ToolTip(components);
+        Bind(() => toolTip.SetToolTip(control, Catalog[key]));
     }
 
     public Label Label(string key, Control? input = null)

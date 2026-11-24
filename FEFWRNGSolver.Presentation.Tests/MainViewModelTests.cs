@@ -123,11 +123,13 @@ public sealed class MainViewModelTests
         Assert.AreEqual("", first.ClassId);
         Assert.AreEqual(0, first.Advances);
         Assert.AreEqual("075BCD15", first.GrowthSeed);
+        Assert.AreEqual(62, first.MinimumExamPassRate);
         CollectionAssert.AreEqual(new[] { 1, 2, 5, 7, 8, 11, 12, 15, 16 }, first.StatGains.ToArray());
         Assert.AreEqual("110D0CBC", first.NextGrowthSeed);
         var second = model.Results[1];
         Assert.AreEqual(1, second.Advances);
         Assert.AreEqual(first.NextGrowthSeed, second.GrowthSeed);
+        Assert.AreEqual(69, second.MinimumExamPassRate);
         CollectionAssert.AreEqual(new[] { 0, 2, 4, 6, 8, 10, 12, 15, 17 }, second.StatGains.ToArray());
         Assert.AreEqual("411249A3", second.NextGrowthSeed);
     }

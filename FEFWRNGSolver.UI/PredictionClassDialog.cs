@@ -17,6 +17,7 @@ internal sealed class PredictionClassDialog : Form
             AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false,
             Padding = new Padding(6)
         };
+        var viewport = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
         foreach (var group in viewModel.Setup.PredictionClassGroups)
         {
             var column = new FlowLayoutPanel
@@ -34,12 +35,11 @@ internal sealed class PredictionClassDialog : Form
                 };
                 toggle.CheckedChanged += (_, _) => viewModel.SetPredictionClassSelected(job.Id, toggle.Checked);
                 column.Controls.Add(toggle);
-                AddClassSettings(column, toggle, job, viewModel, text);
+                AddClassSettings(column, toggle, job, viewModel, text, GrowToFit);
             }
             columns.Controls.Add(column);
         }
 
-        var viewport = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
         viewport.Controls.Add(columns);
         var footer = new FlowLayoutPanel
         {
@@ -60,10 +60,36 @@ internal sealed class PredictionClassDialog : Form
             var available = Screen.FromControl(Owner ?? this).WorkingArea;
             Size = new Size(Math.Min(Width, available.Width), Math.Min(Height, available.Height));
         };
+
+        void GrowToFit()
+        {
+            if (WindowState != FormWindowState.Normal)
+                return;
+            var area = Screen.FromControl(this).WorkingArea;
+            // 一覧に枠・タイトルバー・下部のボタン領域を足して、必要なウィンドウ全体のサイズを求める。
+            var needed = columns.PreferredSize + (Size - viewport.Size);
+            if (needed.Height > area.Height)
+                needed.Width += SystemInformation.GetVerticalScrollBarWidthForDpi(DeviceDpi);
+            if (needed.Width > area.Width)
+                needed.Height += SystemInformation.GetHorizontalScrollBarHeightForDpi(DeviceDpi);
+            var target = new Size(Math.Max(Width, Math.Min(needed.Width, area.Width)),
+                Math.Max(Height, Math.Min(needed.Height, area.Height)));
+            if (target == Size)
+                return;
+
+            int x = Math.Max(area.Left, Math.Min(Left, area.Right - target.Width));
+            int y = Math.Max(area.Top, Math.Min(Top, area.Bottom - target.Height));
+            // 拡張前のスクロールバーが表示領域を狭めたままにならないよう、新しい寸法で判定し直す。
+            var scroll = viewport.AutoScrollPosition;
+            viewport.AutoScroll = false;
+            Bounds = new Rectangle(new Point(x, y), target);
+            viewport.AutoScroll = true;
+            viewport.AutoScrollPosition = new Point(-scroll.X, -scroll.Y);
+        }
     }
 
     private static void AddClassSettings(FlowLayoutPanel column, CheckBox toggle, PredictionClassOption job,
-        MainViewModel viewModel, LocalizationCatalog text)
+        MainViewModel viewModel, LocalizationCatalog text, Action growToFit)
     {
         var settings = viewModel.GetPredictionSettings(job.Id);
         var inherit = text["SYS_USE_UNIT_SETTINGS"];
@@ -93,11 +119,22 @@ internal sealed class PredictionClassDialog : Form
                 {
                     viewModel.SetPredictionSettings(job.Id, viewModel.GetPredictionSettings(job.Id) with { AnimalId = id });
                     affection.SelectedItem = viewModel.GetPredictionSettings(job.Id).Affection.ToString(text.Culture);
-                    affectionField.Visible = !string.IsNullOrEmpty(id);
+                    bool showAffection = !string.IsNullOrEmpty(id);
+                    bool opening = showAffection && !affectionField.Visible;
+                    affectionField.Visible = showAffection;
+                    if (opening)
+                        growToFit();
                 });
             row.Controls.Add(affectionField);
             affectionField.Visible = !string.IsNullOrEmpty(settings.AnimalId);
         }
+
+        if (skills.Count > 1 || animals.Count > 1)
+            toggle.CheckedChanged += (_, _) =>
+            {
+                if (toggle.Checked)
+                    growToFit();
+            };
 
         FlowLayoutPanel AddRow()
         {

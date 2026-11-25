@@ -33,10 +33,7 @@ public sealed class GrowthSetupViewModel
             GrowthOption[] units = [new("", m_Text["SYS_UNIT_UNSPECIFIED"]), .. sortedUnits];
             GrowthOption[] classes = IsManual ? [] : [.. m_Master.GetClassesFor(m_Master.Units[UnitId])
                 .Select(job => new GrowthOption(job.Id, m_Text.Job(job.Id)))];
-            GrowthOption unassigned = new("", m_Text["SYS_ANIMAL_UNASSIGNED"]);
-            GrowthOption[] animals = ClassId.Length == 0 ? [unassigned] : [unassigned, .. m_Master.GetAnimalsFor(m_Master.Classes[ClassId])
-                .Select(a => new GrowthOption(a.Id, m_Text[GetAnimalNameKey(a.Id)]))];
-            return m_Options = new(m_Text.Code, UnitId, ClassId, units, classes, animals, GetPredictionClassGroups());
+            return m_Options = new(m_Text.Code, UnitId, ClassId, units, classes, GetAnimalOptions(ClassId), GetPredictionClassGroups());
         }
     }
 
@@ -44,6 +41,14 @@ public sealed class GrowthSetupViewModel
     public IReadOnlyList<GrowthOption> Classes => Options.Classes;
     public IReadOnlyList<GrowthOption> Animals => Options.Animals;
     public IReadOnlyList<PredictionClassGroup> PredictionClassGroups => Options.PredictionClassGroups;
+
+    internal GrowthOption[] GetAnimalOptions(string classId)
+    {
+        GrowthOption unassigned = new("", m_Text["SYS_ANIMAL_UNASSIGNED"]);
+        return m_Master.Classes.TryGetValue(classId, out var job)
+            ? [unassigned, .. m_Master.GetAnimalsFor(job).Select(a => new GrowthOption(a.Id, m_Text[GetAnimalNameKey(a.Id)]))]
+            : [unassigned];
+    }
 
     private PredictionClassGroup[] GetPredictionClassGroups()
     {
@@ -153,12 +158,13 @@ public sealed class GrowthSetupViewModel
         }
     }
 
-    internal ImmutableArray<short> GetEffectiveRates(GrowthSkillBonus skillBonus) => GetEffectiveRates(skillBonus, ClassId);
+    internal ImmutableArray<short> GetEffectiveRates(GrowthSkillBonus skillBonus) =>
+        GetEffectiveRates(skillBonus, ClassId, AnimalId, Affection);
 
-    internal ImmutableArray<short> GetEffectiveRates(GrowthSkillBonus skillBonus, string classId)
+    internal ImmutableArray<short> GetEffectiveRates(GrowthSkillBonus skillBonus, string classId, string animalId, int affection)
     {
-        AssignedAnimal? animal = HasAnimal && m_Master.Classes[classId].CanDeploy(m_Master.Animals[AnimalId])
-            ? new(AnimalId, Affection) : null;
+        AssignedAnimal? animal = m_Master.Animals.TryGetValue(animalId, out var data) && m_Master.Classes[classId].CanDeploy(data)
+            ? new(animalId, affection) : null;
         return m_Master.Calculate(new(UnitId, classId, animal, skillBonus));
     }
 

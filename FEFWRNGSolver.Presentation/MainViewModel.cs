@@ -14,6 +14,9 @@ public sealed class MainViewModel
     private bool m_IsPartThree;
     private bool m_ConsiderClassChanges;
     private ImmutableHashSet<string> m_PredictionClassIds = [];
+    private static readonly PredictionClassSettings m_InheritedSettings = new();
+    private ImmutableDictionary<string, PredictionClassSettings> m_PredictionSettings =
+        ImmutableDictionary<string, PredictionClassSettings>.Empty;
     private string m_ManualGuaranteedStatCount = "2";
 
     public string Title => m_Text["SYS_APP_TITLE"];
@@ -41,6 +44,45 @@ public sealed class MainViewModel
             return;
         m_PredictionClassIds = selected ? m_PredictionClassIds.Add(id) : m_PredictionClassIds.Remove(id);
         SaveSettings();
+    }
+
+    public IReadOnlyList<GrowthOption> GetPredictionAnimalOptions(string classId) => Setup.GetAnimalOptions(classId);
+
+    public PredictionClassSettings GetPredictionSettings(string classId) =>
+        m_PredictionSettings.GetValueOrDefault(classId, m_InheritedSettings);
+
+    public void SetPredictionSettings(string classId, PredictionClassSettings settings)
+    {
+        if (UpdatePredictionSettings(classId, settings))
+            SaveSettings();
+    }
+
+    private bool UpdatePredictionSettings(string classId, PredictionClassSettings settings)
+    {
+        if (!Setup.Classes.Any(job => job.Id == classId))
+            return false;
+        var skill = settings.SkillBonus;
+        if (skill.HasValue)
+        {
+            var options = GetPredictionSkillOptions(classId);
+            if (options.Count <= 1 || !options.Any(option => option.Value == skill))
+                skill = null;
+        }
+        var animal = settings.AnimalId;
+        if (animal is not null)
+        {
+            var options = GetPredictionAnimalOptions(classId);
+            if (options.Count <= 1 || !options.Any(option => option.Id == animal))
+                animal = null;
+        }
+        int affection = animal is { Length: > 0 } && settings.Affection is >= 0 and <= AnimalGrowthData.MaxAffection
+            ? settings.Affection : AnimalGrowthData.MaxAffection;
+        var valid = new PredictionClassSettings(skill, animal, affection);
+        if (valid == GetPredictionSettings(classId))
+            return false;
+        m_PredictionSettings = valid == m_InheritedSettings
+            ? m_PredictionSettings.Remove(classId) : m_PredictionSettings.SetItem(classId, valid);
+        return true;
     }
 
     public IReadOnlyList<GrowthConditionOption> GrowthConditionOptions =>
@@ -94,8 +136,9 @@ public sealed class MainViewModel
             OnSettingsChanged();
         }
     }
-    public IReadOnlyList<SkillBonusOption> SkillOptions =>
-        [.. GetSkillOptions(m_Text).Where(option => IsSkillAvailable(option.Value, Setup.ClassId))];
+    public IReadOnlyList<SkillBonusOption> SkillOptions => GetPredictionSkillOptions(Setup.ClassId);
+    public IReadOnlyList<SkillBonusOption> GetPredictionSkillOptions(string classId) =>
+        [.. GetSkillOptions(m_Text).Where(option => IsSkillAvailable(option.Value, classId))];
     public static IReadOnlyList<SkillBonusOption> SkillBonusOptions => GetSkillOptions(LocalizationCatalog.Default);
 
     private static bool IsSkillAvailable(GrowthSkillBonus skill, string classId) => skill switch
@@ -148,6 +191,11 @@ public sealed class MainViewModel
         Setup.RestoreSelection(settings);
         m_ConsiderClassChanges = settings?.ConsiderClassChanges == true;
         m_PredictionClassIds = settings?.PredictionClassIds?.Intersect(Setup.Classes.Select(job => job.Id)) ?? [];
+        m_PredictionSettings = m_PredictionSettings.Clear();
+        if (settings?.PredictionSettings is { } saved)
+            foreach (var (classId, prediction) in saved)
+                if (prediction is not null)
+                    UpdatePredictionSettings(classId, prediction);
         m_IsPartThree = CanSelectPartThree && settings?.IsPartThree == true;
         m_SelectedSkillBonus = settings?.SkillBonus ?? GrowthSkillBonus.None;
         GrowthSeed = settings?.GrowthSeed?.ToString("X8") ?? "";
@@ -171,7 +219,8 @@ public sealed class MainViewModel
         m_Store.Save(Setup.UnitId, new(Setup.ClassId, Setup.AnimalId, Setup.Affection, SelectedSkillBonus, seed, IsPartThree)
         {
             ConsiderClassChanges = ConsiderClassChanges,
-            PredictionClassIds = m_PredictionClassIds
+            PredictionClassIds = m_PredictionClassIds,
+            PredictionSettings = m_PredictionSettings
         });
     }
 
@@ -222,15 +271,17 @@ public sealed class MainViewModel
         foreach (string id in classIds)
         {
             ImmutableArray<short> rates;
-            if (id == Setup.ClassId)
+            var settings = ConsiderClassChanges ? GetPredictionSettings(id) : m_InheritedSettings;
+            if (id == Setup.ClassId && settings == m_InheritedSettings)
             {
                 if (!TryGetEffectiveRates(out rates, out var error))
                     return Fail(error);
             }
             else
             {
-                var skill = IsSkillAvailable(SelectedSkillBonus, id) ? SelectedSkillBonus : GrowthSkillBonus.None;
-                rates = Setup.GetEffectiveRates(skill, id);
+                var skill = settings.SkillBonus ?? SelectedSkillBonus;
+                rates = Setup.GetEffectiveRates(IsSkillAvailable(skill, id) ? skill : GrowthSkillBonus.None, id,
+                    settings.AnimalId ?? Setup.AnimalId, settings.AnimalId is null ? Setup.Affection : settings.Affection);
             }
             candidates.Add((id, rates));
         }

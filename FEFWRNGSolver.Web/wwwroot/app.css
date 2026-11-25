@@ -56,13 +56,19 @@ input, select { width: 100%; padding: .45rem .6rem; border: 1px solid #8b9d97; c
 .growth-count input { width: 3rem; min-width: 0; padding-inline: .25rem; }
 .class-change-controls { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
 .class-change-controls button { padding: .35rem .85rem; }
-.class-change-controls label, .class-tiers label { display: flex; align-items: center; gap: .4rem; }
+.class-change-controls label, .class-choice { display: flex; align-items: center; gap: .4rem; }
 .class-change-controls input, .class-tiers input { width: auto; margin: 0; accent-color: #1a6858; }
 .class-settings { overflow-x: auto; }
 .class-tiers { display: grid; grid-template-columns: repeat(5, minmax(max-content, 1fr)); gap: 1rem; padding: .25rem .25rem 1rem; }
 .class-tiers fieldset { margin: 0; }
 .class-tiers label { padding: .2rem 0; font-weight: 400; }
 .class-tiers label:has(:disabled) { color: #586c64; }
+.class-tiers .class-setting { margin-left: 1.2rem; gap: .15rem; font-size: .875rem; }
+.class-setting select { min-width: 0; padding: .25rem; }
+.class-setting select:disabled { background: #f0f2f1; color: #586c64; border-color: #cbd6d1; }
+.class-animal { display: flex; align-items: end; gap: .4rem; }
+.class-animal .class-setting:first-child { flex: 1; }
+.class-animal .class-setting + .class-setting { margin-left: 0; }
 @media (max-width: 36rem) {
     .growth-conditions { column-gap: .75rem; }
     .growth-conditions label { grid-template-columns: minmax(0, 1fr); }

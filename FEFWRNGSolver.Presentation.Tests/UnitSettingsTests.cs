@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using FEFWRNGSolver.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -141,6 +142,55 @@ public sealed class UnitSettingsTests
         Assert.IsFalse(reopened.ConsiderClassChanges);
         Assert.IsTrue(reopened.IsPredictionClassSelected(soldier));
         Assert.IsFalse(reopened.IsPredictionClassSelected(pegasus));
+    }
+
+    [TestMethod]
+    public void RestoresPredictionOverridesPerUnitEvenWhenClassIsUnchecked()
+    {
+        const string charioteer = "JID_戦車兵";
+        const string rider = "JID_軽騎兵";
+        var store = new JsonStore();
+        var model = new MainViewModel(store);
+        model.Setup.UnitId = Female;
+        var chariot = new PredictionClassSettings(GrowthSkillBonus.CharioteersPath45, "汗血馬", 3);
+        var unmounted = new PredictionClassSettings(AnimalId: "");
+        model.SetPredictionClassSelected(charioteer, true);
+        model.SetPredictionSettings(charioteer, chariot);
+        model.SetPredictionSettings(rider, unmounted);
+        model.SetPredictionClassSelected(charioteer, false);
+
+        var reopened = new MainViewModel(store);
+        reopened.Setup.UnitId = Female;
+        Assert.IsFalse(reopened.IsPredictionClassSelected(charioteer));
+        reopened.SetPredictionClassSelected(charioteer, true);
+        Assert.AreEqual(chariot, reopened.GetPredictionSettings(charioteer));
+        Assert.AreEqual(unmounted, reopened.GetPredictionSettings(rider));
+        reopened.Setup.UnitId = Male;
+        Assert.AreEqual(new PredictionClassSettings(), reopened.GetPredictionSettings(charioteer));
+        reopened.Setup.UnitId = Female;
+        Assert.AreEqual(chariot, reopened.GetPredictionSettings(charioteer));
+    }
+
+    [TestMethod]
+    public void RestoresOnlyOverridesSupportedByEachClass()
+    {
+        const string swordsman = "JID_剣士";
+        const string charioteer = "JID_戦車兵";
+        var store = new JsonStore();
+        store.Save(Male, new(swordsman, "", 5, GrowthSkillBonus.None, 0)
+        {
+            PredictionSettings = new Dictionary<string, PredictionClassSettings>
+            {
+                [swordsman] = new(GrowthSkillBonus.None, ""),
+                [charioteer] = new(GrowthSkillBonus.ElephantRidersPath45, "汗血馬", 99),
+                ["JID_天翼兵"] = new(AnimalId: "ファルコン")
+            }.ToImmutableDictionary()
+        });
+        var model = new MainViewModel(store);
+        model.Setup.UnitId = Male;
+        Assert.AreEqual(new PredictionClassSettings(), model.GetPredictionSettings(swordsman));
+        Assert.AreEqual(new PredictionClassSettings(AnimalId: "汗血馬"), model.GetPredictionSettings(charioteer));
+        Assert.AreEqual(new PredictionClassSettings(), model.GetPredictionSettings("JID_天翼兵"));
     }
 
     [TestMethod]

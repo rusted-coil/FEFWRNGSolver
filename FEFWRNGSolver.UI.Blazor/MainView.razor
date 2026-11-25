@@ -1,3 +1,4 @@
+@using FEFWRNGSolver.Domain
 @using FEFWRNGSolver.Presentation
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.Web.Virtualization
@@ -76,12 +77,59 @@
                                 <legend>@group.Name</legend>
                                 @foreach (var job in group.Classes)
                                 {
-                                    <label @key="job.Id">
-                                        <input type="checkbox" disabled="@(!job.IsAvailable)"
-                                               @bind:get="m_ViewModel.IsPredictionClassSelected(job.Id)"
-                                               @bind:set="(bool selected) => m_ViewModel.SetPredictionClassSelected(job.Id, selected)" />
-                                        @job.Name
-                                    </label>
+                                    var selected = m_ViewModel.IsPredictionClassSelected(job.Id);
+                                    var settings = m_ViewModel.GetPredictionSettings(job.Id);
+                                    var skills = m_ViewModel.GetPredictionSkillOptions(job.Id);
+                                    var animals = m_ViewModel.GetPredictionAnimalOptions(job.Id);
+                                    var disabled = !job.IsAvailable || !selected;
+                                    <div @key="job.Id" role="group" aria-label="@job.Name">
+                                        <label class="class-choice">
+                                            <input type="checkbox" disabled="@(!job.IsAvailable)"
+                                                   @bind:get="selected"
+                                                   @bind:set="(bool value) => m_ViewModel.SetPredictionClassSelected(job.Id, value)" />
+                                            @job.Name
+                                        </label>
+                                        @if (skills.Count > 1)
+                                        {
+                                            <label class="class-setting">@Text["SYS_SKILL_BONUS"]
+                                                <select disabled="@disabled" @bind:get="settings.SkillBonus"
+                                                        @bind:set="(GrowthSkillBonus? value) => m_ViewModel.SetPredictionSettings(job.Id, settings with { SkillBonus = value })">
+                                                    <option value="">@Text["SYS_USE_UNIT_SETTINGS"]</option>
+                                                    @foreach (var skill in skills)
+                                                    {
+                                                        <option value="@skill.Value">@skill.Name</option>
+                                                    }
+                                                </select>
+                                            </label>
+                                        }
+                                        @if (animals.Count > 1)
+                                        {
+                                            <div class="class-animal">
+                                                <label class="class-setting">@Text["SYS_ANIMAL"]
+                                                    <select disabled="@disabled" @bind:get="settings.AnimalId ?? UseUnitAnimal"
+                                                            @bind:set="(string? value) => m_ViewModel.SetPredictionSettings(job.Id, settings with { AnimalId = value == UseUnitAnimal ? null : value })">
+                                                        <option value="@UseUnitAnimal">@Text["SYS_USE_UNIT_SETTINGS"]</option>
+                                                        @foreach (var animal in animals)
+                                                        {
+                                                            <option value="@animal.Id">@animal.Name</option>
+                                                        }
+                                                    </select>
+                                                </label>
+                                                @if (!string.IsNullOrEmpty(settings.AnimalId))
+                                                {
+                                                    <label class="class-setting">@Text["SYS_AFFECTION"]
+                                                        <select disabled="@disabled" @bind:get="settings.Affection"
+                                                                @bind:set="(int value) => m_ViewModel.SetPredictionSettings(job.Id, settings with { Affection = value })">
+                                                            @foreach (var level in GrowthSetupViewModel.AffectionLevels)
+                                                            {
+                                                                <option value="@level">@level</option>
+                                                            }
+                                                        </select>
+                                                    </label>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
                                 }
                             </fieldset>
                         }
@@ -144,6 +192,7 @@
 </section>
 
 @code {
+    private const string UseUnitAnimal = "__unit__";
     [CascadingParameter] public LocalizationCatalog Text { get; set; } = null!;
     private BrowserUnitSettingsStore m_Store = null!;
     private SeedSearchViewModel m_Search = null!;

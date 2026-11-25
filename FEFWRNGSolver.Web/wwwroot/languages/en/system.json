@@ -33,6 +33,7 @@
   "SYS_FILTER_MIN_GROWTH_COUNT": "Minimum stats gained",
   "SYS_FILTER_MAX_GROWTH_COUNT": "Maximum stats gained",
   "SYS_CONSIDER_CLASS_CHANGES": "Consider class changes",
+  "SYS_USE_UNIT_SETTINGS": "Use unit settings",
   "SYS_CLASS_TIER_BEGINNER": "Beginner",
   "SYS_CLASS_TIER_INTERMEDIATE": "Intermediate",
   "SYS_CLASS_TIER_ADVANCED": "Advanced",

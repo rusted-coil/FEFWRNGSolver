@@ -77,7 +77,7 @@
   "SYS_UNIT_SETTINGS_SAVE_ERROR": "ユニット設定を保存できませんでした。\n{0}",
   "SYS_REMOVE_SELECTED_ROW": "選択行を削除",
   "SYS_SEARCH_PROGRESS_LABEL": "探索の進捗",
-  "SYS_APP_TITLE": "万紫千紅 乱数調整ツール / FEFWRNGSolver v1.2.0",
+  "SYS_APP_TITLE": "万紫千紅 乱数調整ツール / FEFWRNGSolver v1.2.1",
   "SYS_HP_LABEL": "HP",
   "SYS_STRENGTH_LABEL": "力",
   "SYS_MAGIC_LABEL": "魔力",

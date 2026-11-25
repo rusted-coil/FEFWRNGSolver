@@ -104,9 +104,9 @@ internal sealed class PredictionClassDialog : Form
             var row = new FlowLayoutPanel
             {
                 AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false,
-                Margin = new Padding(18, 0, 3, 3), Enabled = job.IsAvailable && toggle.Checked
+                Margin = new Padding(18, 0, 3, 3), Visible = job.IsAvailable && toggle.Checked
             };
-            toggle.CheckedChanged += (_, _) => row.Enabled = job.IsAvailable && toggle.Checked;
+            toggle.CheckedChanged += (_, _) => row.Visible = job.IsAvailable && toggle.Checked;
             column.Controls.Add(row);
             return row;
         }

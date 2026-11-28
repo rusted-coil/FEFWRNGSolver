@@ -110,6 +110,10 @@ button:disabled { cursor: default; opacity: .55; }
 .table-scroll { overflow: auto; max-height: 65vh; }
 .prediction-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .prediction-export { display: flex; gap: .5rem; margin-inline-start: auto; }
+.copy-toast { position: fixed; right: 1rem; bottom: 1rem; z-index: 4; pointer-events: none;
+    max-width: min(30rem, calc(100% - 2rem)); overflow-wrap: anywhere; }
+.copy-toast:not(:empty) { padding: .65rem 1rem; border-radius: .4rem; background: #1d302e; color: white;
+    box-shadow: 0 .2rem .6rem #0003; }
 table { width: 100%; border-spacing: 0; white-space: nowrap; text-align: center; }
 thead th { position: sticky; top: 0; background: #e6eeea; font-size: .875rem; }
 th.compact-column { width: 1%; }

@@ -8,6 +8,7 @@ public sealed partial class MainForm : Form
 {
     private readonly WindowText m_Text;
     private readonly MainViewModel m_ViewModel;
+    private readonly ToolTip m_CopyToast;
     private readonly Label m_Error = new() { AutoSize = true, ForeColor = SystemColors.WindowText };
     private readonly FlowLayoutPanel m_ExportActions = new()
     {
@@ -32,6 +33,7 @@ public sealed partial class MainForm : Form
     private MainForm(LocalizationCatalog catalog, Action<string> saveLanguage)
     {
         InitializeComponent();
+        m_CopyToast = new ToolTip(components!) { ShowAlways = true };
         m_Text = new WindowText(catalog, components!);
         var store = new FileUnitSettingsStore((key, path) => ShowWarning(catalog.Format(key, path)));
         var searchModel = new SeedSearchViewModel(store, catalog);
@@ -92,7 +94,7 @@ public sealed partial class MainForm : Form
         var save = new Button { AutoSize = true };
         m_Text.Bind(() => copy.Text = catalog["SYS_COPY"]);
         m_Text.Bind(() => save.Text = catalog["SYS_SAVE"]);
-        copy.Click += (_, _) => CopyPredictionCsv();
+        copy.Click += (_, _) => CopyPredictionCsv(copy);
         save.Click += (_, _) => SavePredictionCsv();
         m_ExportActions.Controls.Add(copy);
         m_ExportActions.Controls.Add(save);
@@ -301,16 +303,27 @@ public sealed partial class MainForm : Form
         m_Results.Invalidate();
     }
 
-    private void CopyPredictionCsv()
+    private void CopyPredictionCsv(Button copy)
     {
+        m_CopyToast.Hide(copy);
+        string message;
+        int duration;
         try
         {
             Clipboard.SetText(m_ViewModel.CreatePredictionCsv());
+            message = m_Text.Catalog["SYS_COPIED"];
+            duration = 3000;
         }
-        catch (ExternalException)
+        catch (Exception ex) when (ex is ExternalException or UnauthorizedAccessException)
         {
-            ShowWarning(m_Text.Catalog["SYS_COPY_ERROR"]);
+            const int clipboardCannotOpen = unchecked((int)0x800401D0);
+            string reason = ex.HResult == clipboardCannotOpen ? m_Text.Catalog["SYS_CLIPBOARD_BUSY"] : ex.Message;
+            if (string.IsNullOrWhiteSpace(reason))
+                reason = $"0x{ex.HResult:X8}";
+            message = m_Text.Catalog["SYS_COPY_ERROR"] + Environment.NewLine + reason;
+            duration = 7000;
         }
+        m_CopyToast.Show(message, copy, 0, copy.Height, duration);
     }
 
     private void SavePredictionCsv()

@@ -139,15 +139,15 @@
         {
             <p role="alert">@m_ViewModel.ErrorMessage</p>
         }
-        @if (m_ExportErrorKey is not null)
+        @if (m_SaveFailed)
         {
-            <p role="alert">@Text[m_ExportErrorKey]</p>
+            <p role="alert">@Text["SYS_CSV_SAVE_ERROR"]</p>
         }
         <div class="prediction-actions">
             <button type="submit">@Text["SYS_CALCULATE"]</button>
             <div class="prediction-export">
-                <button type="button" class="secondary" disabled="@(!CanExport)" @onclick="() => ExportCsv(false)">@Text["SYS_COPY"]</button>
-                <button type="button" class="secondary" disabled="@(!CanExport)" @onclick="() => ExportCsv(true)">@Text["SYS_SAVE"]</button>
+                <button type="button" class="secondary" disabled="@(!CanExport)" @onclick="CopyCsv">@Text["SYS_COPY"]</button>
+                <button type="button" class="secondary" disabled="@(!CanExport)" @onclick="SaveCsv">@Text["SYS_SAVE"]</button>
             </div>
         </div>
     </form>
@@ -198,6 +198,7 @@
 <section id="seed-panel" role="tabpanel" aria-labelledby="seed-tab" hidden="@m_ShowPrediction">
     <SeedSearchView Model="m_Search" SeedAdopted="AdoptSeed" />
 </section>
+<div class="copy-toast" role="status" aria-atomic="true">@m_CopyNotice</div>
 
 @code {
     private const string UseUnitAnimal = "__unit__";
@@ -210,7 +211,9 @@
     private ElementReference m_PredictionTab;
     private ElementReference m_SeedTab;
     private IJSObjectReference? m_ExportModule;
-    private string? m_ExportErrorKey;
+    private bool m_SaveFailed;
+    private string? m_CopyNotice;
+    private CancellationTokenSource? m_CopyOperation;
     private bool CanExport => m_ViewModel.HasCalculated && m_ExportModule is not null;
 
     protected override async Task OnInitializedAsync()
@@ -227,7 +230,7 @@
     {
         m_ShowPrediction = m_ViewModel.GrowthSeed.Length > 0;
         m_ShowClassSettings = false;
-        m_ExportErrorKey = null;
+        m_SaveFailed = false;
     }
 
     private async Task AdoptSeed(uint seed)
@@ -241,6 +244,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        m_CopyOperation?.Cancel();
         m_ViewModel.UnitSelected -= OnUnitSelected;
         m_Search.Changed -= Refresh;
         m_Search.Cancel();
@@ -271,25 +275,59 @@
 
     private void Calculate()
     {
-        m_ExportErrorKey = null;
+        m_SaveFailed = false;
         m_ViewModel.Calculate();
     }
 
-    private async Task ExportCsv(bool save)
+    private async Task CopyCsv()
     {
-        m_ExportErrorKey = null;
+        m_SaveFailed = false;
+        m_CopyOperation?.Cancel();
+        using var operation = new CancellationTokenSource();
+        m_CopyOperation = operation;
+        m_CopyNotice = null;
+        string? detail;
+        try
+        {
+            using var source = DotNetObjectReference.Create(this);
+            detail = await m_ExportModule!.InvokeAsync<string?>("copyCsv", source,
+                Text["SYS_CLIPBOARD_UNAVAILABLE"], Text["SYS_CLIPBOARD_DENIED"]);
+        }
+        catch (JSException error)
+        {
+            detail = error.Message.Split('\n', 2)[0].Trim();
+        }
+        if (operation.IsCancellationRequested)
+            return;
+        m_CopyNotice = detail is null ? Text["SYS_COPIED"] : $"{Text["SYS_COPY_ERROR"]} {detail}";
+        StateHasChanged();
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(detail is null ? 3 : 7), operation.Token);
+        }
+        catch (OperationCanceledException) when (operation.IsCancellationRequested)
+        {
+            return;
+        }
+        if (!operation.IsCancellationRequested)
+        {
+            m_CopyNotice = null;
+            m_CopyOperation = null;
+        }
+    }
+
+    private async Task SaveCsv()
+    {
+        m_SaveFailed = false;
         using var source = DotNetObjectReference.Create(this);
         try
         {
-            if (save)
-                await m_ExportModule!.InvokeVoidAsync("saveCsv", source, m_ViewModel.PredictionCsvFileName,
-                    Text["SYS_CSV_FILE"], Text["SYS_CSV_FILENAME"]);
-            else
-                await m_ExportModule!.InvokeVoidAsync("copyCsv", source);
+            await m_ExportModule!.InvokeVoidAsync("saveCsv", source, m_ViewModel.PredictionCsvFileName,
+                Text["SYS_CSV_FILE"], Text["SYS_CSV_FILENAME"]);
         }
         catch (JSException)
         {
-            m_ExportErrorKey = save ? "SYS_CSV_SAVE_ERROR" : "SYS_COPY_ERROR";
+            m_SaveFailed = true;
         }
     }
 

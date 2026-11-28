@@ -1,11 +1,19 @@
-export async function copyCsv(source) {
+export async function copyCsv(source, unavailable, denied) {
     const readCsv = () => source.invokeMethod("CreatePredictionCsv");
-    if (window.ClipboardItem && navigator.clipboard?.write) {
-        // Request clipboard access during the click, before formatting a large result set.
-        const content = Promise.resolve().then(() => new Blob([readCsv()], { type: "text/plain" }));
-        await navigator.clipboard.write([new ClipboardItem({ "text/plain": content })]);
-    } else {
-        await navigator.clipboard.writeText(readCsv());
+    try {
+        if (window.ClipboardItem && navigator.clipboard?.write) {
+            // Request clipboard access during the click, before formatting a large result set.
+            const content = Promise.resolve().then(() => new Blob([readCsv()], { type: "text/plain" }));
+            await navigator.clipboard.write([new ClipboardItem({ "text/plain": content })]);
+        } else if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(readCsv());
+        } else {
+            return unavailable;
+        }
+        return null;
+    } catch (error) {
+        const reason = String(error?.message || error?.name || error).split(/[\r\n]/, 1)[0];
+        return error?.name === "NotAllowedError" ? denied + " " + reason : reason;
     }
 }
 

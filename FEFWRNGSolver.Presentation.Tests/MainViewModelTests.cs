@@ -256,6 +256,25 @@ public sealed class MainViewModelTests
         CollectionAssert.AreEqual(new[] { 1, 0, 0, 0, 0, 0, 0, 0, 0 }, model.Results[0].StatGains.ToArray());
     }
 
+    [TestMethod]
+    public void ExportsTheFilteredTableWithItsHeadersAndFormattedCells()
+    {
+        var model = CreateModel("50", "200");
+        model.GuaranteedStatCount = "0";
+        model.MaxAdvances = "1";
+        model.GrowthRates[0].Condition = StatGrowthCondition.MustNotGrow;
+        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
+
+        const string header = "消費数,兵種,成長seed,試験,HP,力,魔力,速さ,技,守備,魔防,幸運,魅力,次の成長seed";
+        const string row = "1,,110D0CBC,69%,0,+2,0,0,0,0,0,0,0,411249A3";
+        Assert.AreEqual(header + "\r\n" + row, model.CreatePredictionCsv().TrimEnd('\r', '\n'));
+        Assert.AreEqual("指定無し_075BCD15_指定無し.csv", model.PredictionCsvFileName);
+
+        model.GrowthRates[2].Condition = StatGrowthCondition.MustGrow;
+        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
+        Assert.AreEqual(header, model.CreatePredictionCsv().TrimEnd('\r', '\n'));
+    }
+
     private static MainViewModel CreateModel(params string[] rates)
     {
         var model = new MainViewModel { GrowthSeed = "075bcd15", MaxAdvances = "0" };

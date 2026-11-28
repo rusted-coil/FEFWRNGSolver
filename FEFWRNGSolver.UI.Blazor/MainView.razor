@@ -4,7 +4,7 @@
 @using Microsoft.AspNetCore.Components.Web.Virtualization
 @using Microsoft.JSInterop
 @inject IJSRuntime JavaScript
-@implements IDisposable
+@implements IAsyncDisposable
 
 <fieldset class="unit-panel" disabled="@m_Search.IsRunning">
     <legend>@Text["SYS_UNIT"]</legend>
@@ -139,7 +139,17 @@
         {
             <p role="alert">@m_ViewModel.ErrorMessage</p>
         }
-        <button type="submit">@Text["SYS_CALCULATE"]</button>
+        @if (m_ExportErrorKey is not null)
+        {
+            <p role="alert">@Text[m_ExportErrorKey]</p>
+        }
+        <div class="prediction-actions">
+            <button type="submit">@Text["SYS_CALCULATE"]</button>
+            <div class="prediction-export">
+                <button type="button" class="secondary" disabled="@(!CanExport)" @onclick="() => ExportCsv(false)">@Text["SYS_COPY"]</button>
+                <button type="button" class="secondary" disabled="@(!CanExport)" @onclick="() => ExportCsv(true)">@Text["SYS_SAVE"]</button>
+            </div>
+        </div>
     </form>
 
     <h3>@Text["SYS_PREDICTION_RESULTS"]</h3>
@@ -199,19 +209,25 @@
     private bool m_ShowClassSettings;
     private ElementReference m_PredictionTab;
     private ElementReference m_SeedTab;
+    private IJSObjectReference? m_ExportModule;
+    private string? m_ExportErrorKey;
+    private bool CanExport => m_ViewModel.HasCalculated && m_ExportModule is not null;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         m_Store = new((IJSInProcessRuntime)JavaScript, Text);
         m_Search = new(m_Store, Text);
         m_Search.Changed += Refresh;
         m_ViewModel.UnitSelected += OnUnitSelected;
+        m_ExportModule = await JavaScript.InvokeAsync<IJSObjectReference>("import",
+            "./_content/FEFWRNGSolver.UI.Blazor/MainView.razor.js");
     }
 
     private void OnUnitSelected()
     {
         m_ShowPrediction = m_ViewModel.GrowthSeed.Length > 0;
         m_ShowClassSettings = false;
+        m_ExportErrorKey = null;
     }
 
     private async Task AdoptSeed(uint seed)
@@ -223,11 +239,13 @@
 
     private void Refresh() => _ = InvokeAsync(StateHasChanged);
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         m_ViewModel.UnitSelected -= OnUnitSelected;
         m_Search.Changed -= Refresh;
         m_Search.Cancel();
+        if (m_ExportModule is not null)
+            await m_ExportModule.DisposeAsync();
     }
 
     private async Task OnTabKeyDown(KeyboardEventArgs args)
@@ -251,7 +269,32 @@
         await (m_ShowPrediction ? m_PredictionTab : m_SeedTab).FocusAsync();
     }
 
-    private void Calculate() => m_ViewModel.Calculate();
+    private void Calculate()
+    {
+        m_ExportErrorKey = null;
+        m_ViewModel.Calculate();
+    }
+
+    private async Task ExportCsv(bool save)
+    {
+        m_ExportErrorKey = null;
+        using var source = DotNetObjectReference.Create(this);
+        try
+        {
+            if (save)
+                await m_ExportModule!.InvokeVoidAsync("saveCsv", source, m_ViewModel.PredictionCsvFileName,
+                    Text["SYS_CSV_FILE"], Text["SYS_CSV_FILENAME"]);
+            else
+                await m_ExportModule!.InvokeVoidAsync("copyCsv", source);
+        }
+        catch (JSException)
+        {
+            m_ExportErrorKey = save ? "SYS_CSV_SAVE_ERROR" : "SYS_COPY_ERROR";
+        }
+    }
+
+    [JSInvokable]
+    public string CreatePredictionCsv() => m_ViewModel.CreatePredictionCsv();
 
     private ValueTask<ItemsProviderResult<LevelUpRow>> GetRows(ItemsProviderRequest request)
     {

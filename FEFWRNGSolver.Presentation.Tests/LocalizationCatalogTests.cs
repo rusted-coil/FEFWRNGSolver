@@ -103,6 +103,41 @@ public sealed class LocalizationCatalogTests
         Assert.AreEqual(female, units.Single(u => u.Id == "PID_イシュマール/F").Name);
     }
 
+    [TestMethod]
+    public async Task ExportsAllClassesInTheDisplayLanguageWithTheCalculatedSeedAndBaseClass()
+    {
+        var catalog = await LocalizationCatalog.LoadAsync(path => Task.FromResult<string?>(path == "en/job.json"
+            ? """{"JID_戦車兵":"Charioteer","JID_剣士":"Sword, \"light\"\ninfantry"}"""
+            : File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "languages", path))), "jp", []);
+        var model = new MainViewModel(new TestStore(), catalog);
+        model.Setup.UnitId = "PID_ムウ";
+        model.Setup.ClassId = "JID_戦車兵";
+        model.ConsiderClassChanges = true;
+        model.SetPredictionClassSelected("JID_剣士", true);
+        model.SetPredictionClassSelected("JID_戦車兵", true);
+        model.GrowthSeed = "0000000a";
+        model.MaxAdvances = "200";
+        Assert.IsTrue(model.Calculate(), model.ErrorMessage);
+
+        model.Setup.ClassId = "JID_剣士";
+        model.GrowthSeed = "";
+        Assert.IsFalse(model.Calculate());
+        catalog.Select("en");
+        Assert.AreEqual("Mu_0000000A_Charioteer.csv", model.PredictionCsvFileName);
+        using var csv = new Microsoft.VisualBasic.FileIO.TextFieldParser(new StringReader(model.CreatePredictionCsv()));
+        csv.SetDelimiters(",");
+        Assert.AreEqual("Advances", csv.ReadFields()![0]);
+        Assert.AreEqual(402, model.Results.Count);
+        foreach (var row in model.Results)
+        {
+            var fields = csv.ReadFields()!;
+            Assert.AreEqual(14, fields.Length);
+            Assert.AreEqual(catalog.Job(row.ClassId), fields[1]);
+            Assert.AreEqual(row.GrowthSeed, fields[2]);
+        }
+        Assert.IsTrue(csv.EndOfData);
+    }
+
     private static Task<LocalizationCatalog> LoadBundledCatalog(string code) =>
         LocalizationCatalog.LoadAsync(path => Task.FromResult<string?>(
             File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "languages", path))), code, []);

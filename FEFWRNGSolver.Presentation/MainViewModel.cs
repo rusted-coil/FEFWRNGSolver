@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Globalization;
+using System.Text;
 using FEFWRNGSolver.App;
 using FEFWRNGSolver.Domain;
 
@@ -18,6 +19,7 @@ public sealed class MainViewModel
     private ImmutableDictionary<string, PredictionClassSettings> m_PredictionSettings =
         ImmutableDictionary<string, PredictionClassSettings>.Empty;
     private string m_ManualGuaranteedStatCount = "2";
+    private (string GrowthSeed, string ClassId)? m_PredictionSource;
 
     public string Title => m_Text["SYS_APP_TITLE"];
     public string GrowthSeed { get; set; } = "";
@@ -157,7 +159,7 @@ public sealed class MainViewModel
         new(GrowthSkillBonus.ElephantRidersPath45, text.Format("SYS_SKILL_LEVEL_FORMAT", text.Skill("SID_戦象兵の道"), 45))
     ];
     public string? ErrorMessage => m_Error?.Translate(m_Text);
-    public bool HasCalculated { get; private set; }
+    public bool HasCalculated => m_PredictionSource.HasValue;
     public IReadOnlyList<LevelUpRow> Results { get; private set; } = [];
     public event Action? UnitSelected;
 
@@ -233,7 +235,7 @@ public sealed class MainViewModel
 
     private void ClearPrediction()
     {
-        HasCalculated = false;
+        m_PredictionSource = null;
         Results = [];
         m_Error = null;
     }
@@ -312,9 +314,57 @@ public sealed class MainViewModel
             });
         }
         Results = rows.AsReadOnly();
-        HasCalculated = true;
+        m_PredictionSource = (seed.ToString("X8"), Setup.ClassId);
         m_Error = null;
         return true;
+    }
+
+    public string PredictionCsvFileName
+    {
+        get
+        {
+            if (m_PredictionSource is not { } source)
+                return "";
+            var unit = Setup.Units.First(option => option.Id == Setup.UnitId).Name;
+            var job = source.ClassId.Length == 0 ? m_Text["SYS_UNIT_UNSPECIFIED"] : m_Text.Job(source.ClassId);
+            var name = $"{unit}_{source.GrowthSeed}_{job}.csv";
+            return string.Concat(name.Select(c => c < ' ' || "<>:\"/\\|?*".Contains(c) ? '_' : c));
+        }
+    }
+
+    public string CreatePredictionCsv()
+    {
+        var csv = new StringBuilder();
+        string[] cells = [m_Text["SYS_RNG_ADVANCES"], m_Text["SYS_JOB"], m_Text["SYS_GROWTH_SEED"], m_Text["SYS_EXAM"],
+            .. GrowthRates.Select(stat => stat.Name), m_Text["SYS_NEXT_GROWTH_SEED"]];
+        AppendRow();
+        foreach (var row in Results)
+        {
+            cells[0] = row.Advances.ToString();
+            cells[1] = m_Text.Job(row.ClassId);
+            cells[2] = row.GrowthSeed;
+            cells[3] = m_Text.Format("SYS_EXAM_MIN_PASS_RATE", row.MinimumExamPassRate);
+            for (int i = 0; i < row.StatGains.Length; i++)
+                cells[i + 4] = row.StatGains[i].ToString("+0;−0;0");
+            cells[^1] = row.NextGrowthSeed;
+            AppendRow();
+        }
+        return csv.ToString();
+
+        void AppendRow()
+        {
+            for (int i = 0; i < cells.Length; i++)
+            {
+                if (i > 0)
+                    csv.Append(',');
+                var value = cells[i];
+                if (value.AsSpan().ContainsAny(",\"\r\n"))
+                    csv.Append('"').Append(value.Replace("\"", "\"\"")).Append('"');
+                else
+                    csv.Append(value);
+            }
+            csv.Append("\r\n");
+        }
     }
 
     private bool MatchesGrowthConditions(ImmutableArray<int> gains)

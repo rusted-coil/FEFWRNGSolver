@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+using System.Text;
 using FEFWRNGSolver.Presentation;
 
 namespace FEFWRNGSolver.UI;
@@ -7,6 +9,11 @@ public sealed partial class MainForm : Form
     private readonly WindowText m_Text;
     private readonly MainViewModel m_ViewModel;
     private readonly Label m_Error = new() { AutoSize = true, ForeColor = SystemColors.WindowText };
+    private readonly FlowLayoutPanel m_ExportActions = new()
+    {
+        AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Anchor = AnchorStyles.Right,
+        Margin = Padding.Empty, WrapContents = false
+    };
     private readonly DataGridView m_Results = new()
     {
         Dock = DockStyle.Fill,
@@ -67,17 +74,29 @@ public sealed partial class MainForm : Form
         layout.Controls.Add(inputs, 0, 0);
         layout.Controls.Add(CreatePredictionFilters(), 0, 1);
 
-        var actions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top };
-        var calculate = new Button { AutoSize = true };
+        var actions = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 3, RowCount = 1 };
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        var calculate = new Button { AutoSize = true, Anchor = AnchorStyles.Left };
         m_Text.Bind(() => calculate.Text = catalog["SYS_CALCULATE"]);
         calculate.Click += (_, _) =>
         {
             m_ViewModel.Calculate();
             RefreshPredictionResults();
         };
-        actions.Controls.Add(calculate);
-        m_Error.Anchor = AnchorStyles.Left;
-        actions.Controls.Add(m_Error);
+        actions.Controls.Add(calculate, 0, 0);
+        m_Error.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        actions.Controls.Add(m_Error, 1, 0);
+        var copy = new Button { AutoSize = true };
+        var save = new Button { AutoSize = true };
+        m_Text.Bind(() => copy.Text = catalog["SYS_COPY"]);
+        m_Text.Bind(() => save.Text = catalog["SYS_SAVE"]);
+        copy.Click += (_, _) => CopyPredictionCsv();
+        save.Click += (_, _) => SavePredictionCsv();
+        m_ExportActions.Controls.Add(copy);
+        m_ExportActions.Controls.Add(save);
+        actions.Controls.Add(m_ExportActions, 2, 0);
         tabs.SelectedIndexChanged += (_, _) => AcceptButton = tabs.SelectedTab == prediction ? calculate : null;
         layout.Controls.Add(actions, 0, 2);
 
@@ -277,8 +296,41 @@ public sealed partial class MainForm : Form
     private void RefreshPredictionResults()
     {
         UpdatePredictionMessage();
+        m_ExportActions.Enabled = m_ViewModel.HasCalculated;
         m_Results.RowCount = m_ViewModel.Results.Count;
         m_Results.Invalidate();
+    }
+
+    private void CopyPredictionCsv()
+    {
+        try
+        {
+            Clipboard.SetText(m_ViewModel.CreatePredictionCsv());
+        }
+        catch (ExternalException)
+        {
+            ShowWarning(m_Text.Catalog["SYS_COPY_ERROR"]);
+        }
+    }
+
+    private void SavePredictionCsv()
+    {
+        try
+        {
+            using var dialog = new SaveFileDialog
+            {
+                FileName = m_ViewModel.PredictionCsvFileName,
+                Filter = m_Text.Catalog["SYS_CSV_FILE"] + " (*.csv)|*.csv",
+                DefaultExt = "csv",
+                RestoreDirectory = true
+            };
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+                File.WriteAllText(dialog.FileName, m_ViewModel.CreatePredictionCsv(), Encoding.UTF8);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ExternalException)
+        {
+            ShowWarning(m_Text.Catalog["SYS_CSV_SAVE_ERROR"]);
+        }
     }
 
     private void UpdatePredictionMessage() =>
